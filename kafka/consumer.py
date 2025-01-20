@@ -1,4 +1,6 @@
 from confluent_kafka import Consumer, KafkaException, KafkaError
+import requests
+import json
 
 # Kafka configuration
 conf = {
@@ -14,6 +16,9 @@ consumer = Consumer(conf)
 topic = 'test-topic'  # Replace with your Kafka topic name
 consumer.subscribe([topic])
 
+# API endpoint to store data in MongoDB
+api_url = "http://localhost:8000/api/v1/items/"
+
 try:
     print("Listening for messages. Press Ctrl+C to exit.")
     while True:
@@ -28,7 +33,19 @@ try:
                 raise KafkaException(msg.error())
         else:
             # Print the message value
-            print(f"Received message: {msg.value().decode('utf-8')} from {msg.topic()} [{msg.partition()}]")
+            message = msg.value().decode('utf-8')
+            print(f"Received message: {message} from {msg.topic()} [{msg.partition()}]")
+
+            # Parse the message as JSON
+            data = json.loads(message)
+
+            # Send the message to the FastAPI endpoint to store in MongoDB
+            response = requests.post(api_url, json=data)
+            if response.status_code == 201:
+                print("Item stored in MongoDB successfully!")
+            else:
+                print(f"Failed to store item in MongoDB: {response.status_code}")
+                print(response.text)
 except KeyboardInterrupt:
     print("\nExiting consumer.")
 except Exception as e:

@@ -1,5 +1,5 @@
 from confluent_kafka import Producer
-import sys
+import json
 
 # Kafka configuration
 conf = {
@@ -25,7 +25,14 @@ topic = 'test-topic'  # Replace with your Kafka topic name
 try:
     print("Enter messages to send to Kafka (Ctrl+C to exit):")
     while True:
-        message = input("> ")
+        url = input("Enter URL: ")
+        status = input("Enter status: ")
+        video_title = input("Enter video title: ")
+        message = json.dumps({
+            "url": url,
+            "status": status,
+            "videoTitle": video_title
+        })
         producer.produce(topic, value=message, callback=delivery_report)
         producer.flush()  # Ensure messages are delivered
 except KeyboardInterrupt:
