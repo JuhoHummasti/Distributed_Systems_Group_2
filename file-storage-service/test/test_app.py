@@ -1,73 +1,76 @@
 import unittest
-from unittest.mock import patch, MagicMock
-from app import app, video_storage
+import grpc
+import video_file_pb2
+import video_file_pb2_grpc
+import tempfile
+import os
+import time
 
-class FileStorageServiceTestCase(unittest.TestCase):
+class VideoServiceTestCase(unittest.TestCase):
     def setUp(self):
-        self.app = app.test_client()
-        self.app.testing = True
+        self.channel = grpc.insecure_channel('localhost:50051')
+        self.stub = video_file_pb2_grpc.VideoServiceStub(self.channel)
+        self.upload_file_path = 'test/videos/testvideo.mp4'
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.download_file_path = os.path.join(self.temp_dir.name, 'downloaded_testvideo.mp4')
+        self.large_video_path = 'test/videos/large_testvideo.mp4'
+        self.generate_large_test_video(self.large_video_path, size_in_gb=1)
 
-    @patch('src.app.validate_video_file')
-    @patch('src.app.generate_unique_id')
-    @patch('src.app.video_storage.save_video')
-    def test_upload_video_success(self, mock_save_video, mock_generate_unique_id, mock_validate_video_file):
-        mock_validate_video_file.return_value = True
-        mock_generate_unique_id.return_value = 'unique_id'
-        
-        data = {
-            'file': (MagicMock(filename='test.mp4'), 'test.mp4')
-        }
-        response = self.app.post('/upload', data=data, content_type='multipart/form-data')
-        
-        self.assertEqual(response.status_code, 201)
-        self.assertIn('File uploaded successfully', response.get_data(as_text=True))
-        self.assertIn('unique_id', response.get_data(as_text=True))
+    def tearDown(self):
+        self.channel.close()
+        self.temp_dir.cleanup()
+        if os.path.exists(self.large_video_path):
+            os.remove(self.large_video_path)
 
-    def test_upload_video_no_file_part(self):
-        response = self.app.post('/upload', data={}, content_type='multipart/form-data')
-        
-        self.assertEqual(response.status_code, 400)
-        self.assertIn('No file part', response.get_data(as_text=True))
+    def generate_large_test_video(self, file_path, size_in_gb):
+        with open(file_path, 'wb') as f:
+            f.seek(size_in_gb * 1024 * 1024 * 1024 - 1)
+            f.write(b'\0')
 
-    def test_upload_video_no_selected_file(self):
-        data = {
-            'file': (MagicMock(filename=''), '')
-        }
-        response = self.app.post('/upload', data=data, content_type='multipart/form-data')
-        
-        self.assertEqual(response.status_code, 400)
-        self.assertIn('No selected file', response.get_data(as_text=True))
+    def test_upload_and_download_video(self):
+        # Upload video
+        response = self.upload_video(self.upload_file_path)
+        self.assertIsNotNone(response)
+        self.assertTrue(hasattr(response, 'video_id'))
+        print(f"Uploaded video with ID: {response.video_id}")
 
-    @patch('src.app.validate_video_file')
-    def test_upload_video_invalid_format(self, mock_validate_video_file):
-        mock_validate_video_file.return_value = False
-        
-        data = {
-            'file': (MagicMock(filename='test.txt'), 'test.txt')
-        }
-        response = self.app.post('/upload', data=data, content_type='multipart/form-data')
-        
-        self.assertEqual(response.status_code, 400)
-        self.assertIn('Invalid video file format', response.get_data(as_text=True))
+        # Download video
+        self.download_video(response.video_id, self.download_file_path)
+        print(f"Downloaded video to: {self.download_file_path}")
 
-    @patch('src.app.video_storage.get_video')
-    def test_get_video_success(self, mock_get_video):
-        mock_get_video.return_value = 'http://example.com/video.mp4'
-        
-        response = self.app.get('/video/unique_id')
-        
-        self.assertEqual(response.status_code, 200)
-        self.assertIn('unique_id', response.get_data(as_text=True))
-        self.assertIn('http://example.com/video.mp4', response.get_data(as_text=True))
+    def test_throughput(self):
+        # Measure upload throughput
+        start_time = time.time()
+        response = self.upload_video(self.large_video_path)
+        upload_time = time.time() - start_time
+        self.assertIsNotNone(response)
+        self.assertTrue(hasattr(response, 'video_id'))
+        upload_file_size = os.path.getsize(self.large_video_path)
+        upload_throughput = upload_file_size / upload_time
+        print(f"Upload throughput: {upload_throughput / (1024 * 1024):.2f} MB/s")
 
-    @patch('src.app.video_storage.get_video')
-    def test_get_video_not_found(self, mock_get_video):
-        mock_get_video.return_value = None
-        
-        response = self.app.get('/video/unknown_id')
-        
-        self.assertEqual(response.status_code, 404)
-        self.assertIn('Video not found', response.get_data(as_text=True))
+        # Measure download throughput
+        start_time = time.time()
+        self.download_video(response.video_id, self.download_file_path)
+        download_time = time.time() - start_time
+        download_file_size = os.path.getsize(self.download_file_path)
+        download_throughput = download_file_size / download_time
+        print(f"Download throughput: {download_throughput / (1024 * 1024):.2f} MB/s")
+
+    def upload_video(self, file_path):
+        def video_chunks():
+            with open(file_path, 'rb') as f:
+                while chunk := f.read(1024 * 1024):  # 1MB chunks
+                    yield video_file_pb2.VideoChunk(content=chunk)
+
+        response = self.stub.UploadVideo(video_chunks())
+        return response
+
+    def download_video(self, video_id, output_path):
+        request = video_file_pb2.VideoRequest(video_id=video_id)
+        with open(output_path, 'wb') as f:
+            for chunk in self.stub.DownloadVideo(request):
+                f.write(chunk.content)
 
 if __name__ == '__main__':
     unittest.main()

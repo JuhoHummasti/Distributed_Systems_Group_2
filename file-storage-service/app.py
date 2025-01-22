@@ -1,30 +1,39 @@
-from fastapi import FastAPI, File, UploadFile, HTTPException
-from fastapi.responses import JSONResponse, FileResponse
-from utils.validators import validate_video_file, generate_unique_id
-from utils.video_storage import VideoStorage
+import grpc
+from concurrent import futures
+import video_file_pb2
+import video_file_pb2_grpc
 import os
 
-app = FastAPI()
-video_storage = VideoStorage()
+from utils.validators import validate_video_file, generate_unique_id
 
-@app.post("/upload")
-async def upload_video(file: UploadFile = File(...)):
-    if file.filename == '':
-        raise HTTPException(status_code=400, detail="No selected file")
-    if not validate_video_file(file):
-        raise HTTPException(status_code=400, detail="Invalid video file format")
+class VideoService(video_file_pb2_grpc.VideoServiceServicer):
+    def __init__(self, storage_dir='videos'):
+        self.storage_dir = storage_dir
+        if not os.path.exists(self.storage_dir):
+            os.makedirs(self.storage_dir)
 
-    video_id = generate_unique_id()
-    video_storage.save_video(file.file, video_id)
-    return JSONResponse(content={"message": "File uploaded successfully", "video_id": video_id}, status_code=201)
+    def UploadVideo(self, request_iterator, context):
+        video_id = generate_unique_id()
+        file_path = os.path.join(self.storage_dir, video_id)
+        with open(file_path, 'wb') as f:
+            for chunk in request_iterator:
+                f.write(chunk.content)
+        return video_file_pb2.UploadResponse(video_id=video_id)
 
-@app.get("/video/{video_id}")
-async def get_video(video_id: str):
-    video = video_storage.get_video(video_id)
-    if video is None:
-        raise HTTPException(status_code=404, detail="Video not found")
-    return FileResponse(video, media_type='application/octet-stream', filename=os.path.basename(video))
+    def DownloadVideo(self, request, context):
+        file_path = os.path.join(self.storage_dir, request.video_id)
+        if not os.path.exists(file_path):
+            context.abort(grpc.StatusCode.NOT_FOUND, "Video not found")
+        with open(file_path, 'rb') as f:
+            while chunk := f.read(1024 * 1024):  # 1MB chunks
+                yield video_file_pb2.VideoChunk(content=chunk)
+
+def serve():
+    server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+    video_file_pb2_grpc.add_VideoServiceServicer_to_server(VideoService(), server)
+    server.add_insecure_port('[::]:50051')
+    server.start()
+    server.wait_for_termination()
 
 if __name__ == '__main__':
-    import uvicorn
-    uvicorn.run(app, host="127.0.0.1", port=8000)
+    serve()

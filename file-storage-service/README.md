@@ -39,6 +39,16 @@ file-storage-service
 - To upload a video file, send a POST request to `/upload` with the video file included in the form data.
 - To retrieve a video file, send a GET request to `/video/<video_id>` where `<video_id>` is the unique identifier for the video.
 
+## Test commands
+
+```
+curl -X POST -F "file=@/home/matti/Videos/Webcam/2025-01-22-145407.mp4" http://127.0.0.1:8000/upload
+```
+
+```
+curl -O http://127.0.0.1:8000/video/efdad15f-8849-4062-a2fa-af4edd4c47b9
+```
+
 ## License
 
 This project is licensed under the MIT License. See the LICENSE file for more details.

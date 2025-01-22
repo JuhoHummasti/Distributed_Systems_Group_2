@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package video;
+
+service VideoService {
+  rpc UploadVideo(stream VideoChunk) returns (UploadResponse);
+  rpc DownloadVideo(VideoRequest) returns (stream VideoChunk);
+}
+
+message VideoChunk {
+  bytes content = 1;
+}
+
+message UploadResponse {
+  string video_id = 1;
+}
+
+message VideoRequest {
+  string video_id = 1;
+}
