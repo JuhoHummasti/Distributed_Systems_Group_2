@@ -8,7 +8,8 @@ class VideoStorage:
 
     def save_video(self, file, video_id):
         file_path = os.path.join(self.storage_dir, video_id)
-        file.save(file_path)
+        with open(file_path, 'wb') as f:
+            f.write(file.read())
 
     def get_video(self, video_id):
         file_path = os.path.join(self.storage_dir, video_id)

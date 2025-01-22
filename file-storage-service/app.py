@@ -1,31 +1,30 @@
-from flask import Flask, request, jsonify, send_file
-from utils.video_storage import VideoStorage
+from fastapi import FastAPI, File, UploadFile, HTTPException
+from fastapi.responses import JSONResponse, FileResponse
 from utils.validators import validate_video_file, generate_unique_id
+from utils.video_storage import VideoStorage
 import os
 
-app = Flask(__name__)
+app = FastAPI()
 video_storage = VideoStorage()
 
-@app.route('/upload', methods=['POST'])
-def upload_video():
-    if 'file' not in request.files:
-        return jsonify({'error': 'No file part'}), 400
-    file = request.files['file']
+@app.post("/upload")
+async def upload_video(file: UploadFile = File(...)):
     if file.filename == '':
-        return jsonify({'error': 'No selected file'}), 400
+        raise HTTPException(status_code=400, detail="No selected file")
     if not validate_video_file(file):
-        return jsonify({'error': 'Invalid video file format'}), 400
+        raise HTTPException(status_code=400, detail="Invalid video file format")
 
     video_id = generate_unique_id()
-    video_storage.save_video(file, video_id)
-    return jsonify({'message': 'File uploaded successfully', 'video_id': video_id}), 201
+    video_storage.save_video(file.file, video_id)
+    return JSONResponse(content={"message": "File uploaded successfully", "video_id": video_id}, status_code=201)
 
-@app.route('/video/<video_id>', methods=['GET'])
-def get_video(video_id):
+@app.get("/video/{video_id}")
+async def get_video(video_id: str):
     video = video_storage.get_video(video_id)
     if video is None:
-        return jsonify({'error': 'Video not found'}), 404
-    return send_file(video, as_attachment=True)
+        raise HTTPException(status_code=404, detail="Video not found")
+    return FileResponse(video, media_type='application/octet-stream', filename=os.path.basename(video))
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    import uvicorn
+    uvicorn.run(app, host="127.0.0.1", port=8000)
