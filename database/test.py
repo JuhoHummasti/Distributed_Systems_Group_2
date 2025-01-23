@@ -1,98 +1,160 @@
 import requests
+import unittest
 from datetime import datetime
-#from models import Item
 
-url = "http://localhost:8000/api/v1/items/"
-
-itemIds = []
-
-def test_create_item():
+class TestItemsAPI(unittest.TestCase):
     
-    data = {
-    "url": "http://example.com",
-    "status": "active",
-    "videoTitle": "Sample Video"
-    }
-    postResponse = requests.post(url, json=data)
-    if postResponse.status_code == 201:
-        print("Item created successfully!")
-        print(f"Created item ID: {postResponse.json()['id']}")
-    else:
-        print(f"Failed to create item: {postResponse.status_code}")
-        print(postResponse.text)
+    @classmethod
+    def setUpClass(cls):
+        """Runs once before all tests."""
+        cls.base_url = "http://localhost:8000/api/v1/items/"
+        cls.test_item_ids = []
+    
+    def setUp(self):
+        """Runs before every individual test."""
+        self.item_id = None  # Reset item ID for each test
+    
+    def test_create_item(self):
 
-def test_get_items():
-    getResponse = requests.get(url)
+        print("-------Create Item Test-------")
 
-    # Check if the request was successful
-    if getResponse.status_code == 200:
-        items = getResponse.json()  # Parse the JSON response
-        print("Items fetched successfully:")
-        for item in items:
-            itemIds.append(item["_id"])
-            print(item)
-    else:
-        print(f"Failed to fetch items: {getResponse.status_code}")
-        print(getResponse.text)
+        data = {
+            "url": "http://example.com",
+            "status": "active",
+            "videoTitle": "Sample Video"
+        }
+        
+        postResponse = requests.post(self.base_url, json=data)
+        self.test_item_ids.append(postResponse.json()["id"])
+        self.assertEqual(postResponse.status_code, 201, "Failed to create item")
+        
+        item_id = postResponse.json().get('id')
+        
+        print(f"POST response data: {postResponse.json()}")  # Debugging log
+        self.assertIsNotNone(item_id, "Item ID should not be None")
+        
+        print(f"Item created successfully! Created item ID: {item_id}")
 
-def test_get_item():
-    getResponse = requests.get(f"{url}{itemIds[0]}")
+    def test_get_items(self):
 
-    # Check if the request was successful
-    if getResponse.status_code == 200:
-        item = getResponse.json()  # Parse the JSON response
+        print("-------Get Items Test-------")
+
+        data = {
+            "url": "http://example.com",
+            "status": "active",
+            "videoTitle": "Sample Video"
+        }
+        postResponse = requests.post(self.base_url, json=data)
+        self.test_item_ids.append(postResponse.json()["id"])  # Access the 'id' field
+
+        postResponse = requests.post(self.base_url, json=data)
+        self.test_item_ids.append(postResponse.json()["id"])  # Access the 'id' field
+
+        postResponse = requests.post(self.base_url, json=data)
+        self.test_item_ids.append(postResponse.json()["id"])  # Access the 'id' field
+
+        getResponse = requests.get(self.base_url)
+        self.assertEqual(getResponse.status_code, 200, "Failed to fetch items")
+        
+        items = getResponse.json()
+        self.assertGreater(len(items), 0, "No items returned")
+        
+        print(f"Items fetched successfully: {items}")
+        
+
+    def test_get_item(self):
+
+        print("-------Get Item Test-------")
+
+        data = {
+            "url": "http://example.com",
+            "status": "active",
+            "videoTitle": "Sample Video"
+        }
+        postResponse = requests.post(self.base_url, json=data)
+        if postResponse.status_code == 201:
+            response_data = postResponse.json()  # Parse the JSON response
+            item_id = response_data.get("id")  # Access the 'id' field
+            self.test_item_ids.append(postResponse.json()["id"])
+        
+        getResponse = requests.get(f"{self.base_url}{item_id}")
+        self.assertEqual(getResponse.status_code, 200, "Failed to fetch item")
+        
+        item = getResponse.json()
         print(f"Item fetched successfully: {item}")
-    else:
-        print(f"Failed to fetch item: {getResponse.status_code}")
-        print(getResponse.text)
 
-def test_update_item():
-    data = {
-        "url": "http://example-updated.com",
-        "status": "inactive",
-        "videoTitle": "Updated Video",
-        "time_updated": str(datetime.now())  # Can leave this as None or specify a datetime string
-    }
+    def test_update_item(self):
+        
+        print("-------Update Item Test-------")
 
-    putResponse = requests.put(f"{url}{itemIds[0]}", json=data)
-
-    # Check if the request was successful
-    if putResponse.status_code == 200:
-        print(f"Item {itemIds[0]} updated successfully!")
-    else:
-        print(f"Failed to update item {itemIds[0]}: {putResponse.status_code}")
-        print(putResponse.text)
-    
-    getResponse = requests.get(f"{url}{itemIds[0]}")
-    if getResponse.status_code == 200:
-        item = getResponse.json()  # Parse the JSON response
+        data = {
+            "url": "http://example.com",
+            "status": "active",
+            "videoTitle": "Sample Video"
+        }
+        postResponse = requests.post(self.base_url, json=data)
+        if postResponse.status_code == 201:
+            response_data = postResponse.json()  # Parse the JSON response
+            item_id = response_data.get("id")  # Access the 'id' field
+            self.test_item_ids.append(postResponse.json()["id"])
+        
+        
+        # Verify item existence
+        getResponse = requests.get(f"{self.base_url}{item_id}")
+        self.assertEqual(getResponse.status_code, 200, f"Item {item_id} does not exist before update.")
+        
+        data = {
+            "url": "http://example-updated.com",
+            "status": "inactive",
+            "videoTitle": "Updated Video",
+            "time_updated": str(datetime.now())
+        }
+        
+        putResponse = requests.put(f"{self.base_url}{item_id}", json=data)
+        self.assertEqual(putResponse.status_code, 200, f"Failed to update item {item_id}")
+        
+        getResponse = requests.get(f"{self.base_url}{item_id}")
+        self.assertEqual(getResponse.status_code, 200, "Failed to fetch updated item")
+        
+        item = getResponse.json()
         print(f"Updated Item: {item}")
-    else:
-        print(f"Failed to fetch updated item: {getResponse.status_code}")
-        print(getResponse.text)
-
-
-def test_delete_item():
-    deleteResponse = requests.delete(f"{url}{itemIds[0]}")
-
-    # Check if the request was successful
-    if deleteResponse.status_code == 200:
-        print(f"Item {itemIds[0]} deleted successfully!")
-    else:
-        print(f"Failed to delete item {itemIds[0]}: {deleteResponse.status_code}")
-        print(deleteResponse.text)
     
-    getResponse = requests.get(url)
-    if getResponse.status_code == 200:
-        items = getResponse.json()  # Parse the JSON response
+    def test_delete_item(self):
+
+        print("-------Delete Item Test-------")
+
+        data = {
+            "url": "http://example.com",
+            "status": "active",
+            "videoTitle": "Sample Video"
+        }
+        postResponse = requests.post(self.base_url, json=data)
+        if postResponse.status_code == 201:
+            response_data = postResponse.json()  # Parse the JSON response
+            item_id = response_data["id"]  # Access the 'id' field
+            self.test_item_ids.append(postResponse.json()["id"])
+            
+        deleteResponse = requests.delete(f"{self.base_url}{item_id}")
+        self.assertEqual(deleteResponse.status_code, 200, f"Failed to delete item {item_id}")
+        
+        getResponse = requests.get(self.base_url)
+        self.assertEqual(getResponse.status_code, 200, "Failed to fetch items")
+        
+        self.test_item_ids.remove(postResponse.json()["id"])
+        print(f"Deleted item: {postResponse.json()["id"]}")
+        items = getResponse.json()
+        
         print(f"Items after delete: {items}")
-    else:
-        print(f"Failed to fetch items: {getResponse.status_code}")
-        print(getResponse.text)
+
+    @classmethod
+    def tearDownClass(cls):
+        """Runs once after all tests,
+            Deletes test data"""
+        
+        print("-------Test Items cleanup-------")
+        for id in cls.test_item_ids:
+            requests.delete(f"{cls.base_url}{id}")
+        print("Cleaned up test items.")
 
 if __name__ == "__main__":
-    test_create_item()
-    test_get_items()
-    test_get_item()
-    test_update_item()
-    test_delete_item()
+    unittest.main()
