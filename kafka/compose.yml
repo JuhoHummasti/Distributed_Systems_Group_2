@@ -10,6 +10,11 @@ services:
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
       KAFKA_CONTROLLER_QUORUM_VOTERS: 1@controller-1:9093,2@controller-2:9093,3@controller-3:9093
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_OPTS: "-javaagent:/app/config/jmx_prometheus_javaagent.jar=7071:/app/config/kafka-metrics.yml"
+    volumes:
+      - ./config:/app/config
+    ports:
+      - 7071:7071
 
   controller-2:
     image: apache/kafka:latest
@@ -22,6 +27,9 @@ services:
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
       KAFKA_CONTROLLER_QUORUM_VOTERS: 1@controller-1:9093,2@controller-2:9093,3@controller-3:9093
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_OPTS: "-javaagent:/app/config/jmx_prometheus_javaagent.jar=7072:/app/config/kafka-metrics.yml"
+    volumes:
+      - ./config:/app/config
 
   controller-3:
     image: apache/kafka:latest
@@ -34,6 +42,9 @@ services:
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
       KAFKA_CONTROLLER_QUORUM_VOTERS: 1@controller-1:9093,2@controller-2:9093,3@controller-3:9093
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_OPTS: "-javaagent:/app/config/jmx_prometheus_javaagent.jar=7073:/app/config/kafka-metrics.yml"
+    volumes:
+      - ./config:/app/config
 
   broker-1:
     image: apache/kafka:latest
@@ -50,6 +61,9 @@ services:
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
       KAFKA_CONTROLLER_QUORUM_VOTERS: 1@controller-1:9093,2@controller-2:9093,3@controller-3:9093
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_OPTS: "-javaagent:/app/config/jmx_prometheus_javaagent.jar=7074:/app/config/kafka-metrics.yml"
+    volumes:
+      - ./config:/app/config
     depends_on:
       - controller-1
       - controller-2
@@ -70,6 +84,9 @@ services:
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
       KAFKA_CONTROLLER_QUORUM_VOTERS: 1@controller-1:9093,2@controller-2:9093,3@controller-3:9093
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_OPTS: "-javaagent:/app/config/jmx_prometheus_javaagent.jar=7074:/app/config/kafka-metrics.yml"
+    volumes:
+      - ./config:/app/config
     depends_on:
       - controller-1
       - controller-2
@@ -90,6 +107,9 @@ services:
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
       KAFKA_CONTROLLER_QUORUM_VOTERS: 1@controller-1:9093,2@controller-2:9093,3@controller-3:9093
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_OPTS: "-javaagent:/app/config/jmx_prometheus_javaagent.jar=7074:/app/config/kafka-metrics.yml"
+    volumes:
+      - ./config:/app/config
     depends_on:
       - controller-1
       - controller-2
