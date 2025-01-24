@@ -3,10 +3,10 @@ from concurrent import futures
 import time
 from minio import Minio
 from minio.error import S3Error
-import presigner_pb2
-import presigner_pb2_grpc
+import file_storage_service_pb2
+import file_storage_service_pb2_grpc
 
-class PresignerService(presigner_pb2_grpc.PresignerServiceServicer):
+class FileStorageService(file_storage_service_pb2_grpc.FileStorageServiceServicer):
     def __init__(self):
         self.minio_client = Minio(
             "localhost:9000",
@@ -21,11 +21,11 @@ class PresignerService(presigner_pb2_grpc.PresignerServiceServicer):
     def GetVideoDownloadUrl(self, request, context):
         video_id = request.video_id
         url = self.minio_client.presigned_get_object(self.bucket_name, video_id)
-        return presigner_pb2.VideoDownloadUrlResponse(download_url=url)
+        return file_storage_service_pb2.VideoDownloadUrlResponse(download_url=url)
 
 def serve():
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
-    presigner_pb2_grpc.add_PresignerServiceServicer_to_server(PresignerService(), server)
+    file_storage_service_pb2_grpc.add_FileStorageServiceServicer_to_server(FileStorageService(), server)
     server.add_insecure_port('[::]:50051')
     server.start()
     print("Server started on port 50051")

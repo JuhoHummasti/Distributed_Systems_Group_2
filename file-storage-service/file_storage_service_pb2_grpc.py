@@ -3,9 +3,9 @@
 import grpc
 import warnings
 
-import presigner_pb2 as presigner__pb2
+import file_storage_service_pb2 as file__storage__service__pb2
 
-GRPC_GENERATED_VERSION = '1.70.0'
+GRPC_GENERATED_VERSION = '1.69.0'
 GRPC_VERSION = grpc.__version__
 _version_not_supported = False
 
@@ -18,14 +18,14 @@ except ImportError:
 if _version_not_supported:
     raise RuntimeError(
         f'The grpc package installed is at version {GRPC_VERSION},'
-        + f' but the generated code in presigner_pb2_grpc.py depends on'
+        + f' but the generated code in file_storage_service_pb2_grpc.py depends on'
         + f' grpcio>={GRPC_GENERATED_VERSION}.'
         + f' Please upgrade your grpc module to grpcio>={GRPC_GENERATED_VERSION}'
         + f' or downgrade your generated code using grpcio-tools<={GRPC_VERSION}.'
     )
 
 
-class PresignerServiceStub(object):
+class FileStorageServiceStub(object):
     """Missing associated documentation comment in .proto file."""
 
     def __init__(self, channel):
@@ -35,13 +35,13 @@ class PresignerServiceStub(object):
             channel: A grpc.Channel.
         """
         self.GetVideoDownloadUrl = channel.unary_unary(
-                '/presigner.PresignerService/GetVideoDownloadUrl',
-                request_serializer=presigner__pb2.VideoDownloadUrlRequest.SerializeToString,
-                response_deserializer=presigner__pb2.VideoDownloadUrlResponse.FromString,
+                '/file_storage.FileStorageService/GetVideoDownloadUrl',
+                request_serializer=file__storage__service__pb2.VideoDownloadUrlRequest.SerializeToString,
+                response_deserializer=file__storage__service__pb2.VideoDownloadUrlResponse.FromString,
                 _registered_method=True)
 
 
-class PresignerServiceServicer(object):
+class FileStorageServiceServicer(object):
     """Missing associated documentation comment in .proto file."""
 
     def GetVideoDownloadUrl(self, request, context):
@@ -51,22 +51,22 @@ class PresignerServiceServicer(object):
         raise NotImplementedError('Method not implemented!')
 
 
-def add_PresignerServiceServicer_to_server(servicer, server):
+def add_FileStorageServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'GetVideoDownloadUrl': grpc.unary_unary_rpc_method_handler(
                     servicer.GetVideoDownloadUrl,
-                    request_deserializer=presigner__pb2.VideoDownloadUrlRequest.FromString,
-                    response_serializer=presigner__pb2.VideoDownloadUrlResponse.SerializeToString,
+                    request_deserializer=file__storage__service__pb2.VideoDownloadUrlRequest.FromString,
+                    response_serializer=file__storage__service__pb2.VideoDownloadUrlResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
-            'presigner.PresignerService', rpc_method_handlers)
+            'file_storage.FileStorageService', rpc_method_handlers)
     server.add_generic_rpc_handlers((generic_handler,))
-    server.add_registered_method_handlers('presigner.PresignerService', rpc_method_handlers)
+    server.add_registered_method_handlers('file_storage.FileStorageService', rpc_method_handlers)
 
 
  # This class is part of an EXPERIMENTAL API.
-class PresignerService(object):
+class FileStorageService(object):
     """Missing associated documentation comment in .proto file."""
 
     @staticmethod
@@ -83,9 +83,9 @@ class PresignerService(object):
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/presigner.PresignerService/GetVideoDownloadUrl',
-            presigner__pb2.VideoDownloadUrlRequest.SerializeToString,
-            presigner__pb2.VideoDownloadUrlResponse.FromString,
+            '/file_storage.FileStorageService/GetVideoDownloadUrl',
+            file__storage__service__pb2.VideoDownloadUrlRequest.SerializeToString,
+            file__storage__service__pb2.VideoDownloadUrlResponse.FromString,
             options,
             channel_credentials,
             insecure,
