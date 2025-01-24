@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package presigner;
+
+service PresignerService {
+  rpc GetVideoDownloadUrl (VideoDownloadUrlRequest) returns (VideoDownloadUrlResponse);
+}
+
+message VideoDownloadUrlRequest {
+  string video_id = 1;
+}
+
+message VideoDownloadUrlResponse {
+  string download_url = 1;
+}
