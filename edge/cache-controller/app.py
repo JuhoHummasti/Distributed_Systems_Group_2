@@ -3,12 +3,15 @@ import json
 import grpc
 import requests
 import io
+import os
 from minio import Minio
 from minio.error import S3Error
 from confluent_kafka import Consumer, KafkaException, KafkaError
 
-# Add the directory containing the generated protobuf files to sys.path
-sys.path.insert(0, 'c:/Users/JuhoH/OneDrive/Distributed_Systems_Group_2/file-storage-service')
+# Add the parent directory to sys.path
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.abspath(os.path.join(current_dir, '../file-storage-service'))
+sys.path.insert(0, parent_dir)
 
 import file_storage_service_pb2
 import file_storage_service_pb2_grpc
