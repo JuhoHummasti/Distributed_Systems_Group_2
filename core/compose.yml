@@ -1,0 +1,192 @@
+services:
+  controller-1:
+    image: apache/kafka:latest
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: controller
+      KAFKA_LISTENERS: CONTROLLER://:9093
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@controller-1:9093,2@controller-2:9093,3@controller-3:9093
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_OPTS: "-javaagent:/app/config/jmx_prometheus_javaagent.jar=7071:/app/config/kafka-metrics.yml"
+    volumes:
+      - ./config/kafka/config:/app/config
+    ports:
+      - 7071:7071
+
+  controller-2:
+    image: apache/kafka:latest
+    environment:
+      KAFKA_NODE_ID: 2
+      KAFKA_PROCESS_ROLES: controller
+      KAFKA_LISTENERS: CONTROLLER://:9093
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@controller-1:9093,2@controller-2:9093,3@controller-3:9093
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_OPTS: "-javaagent:/app/config/jmx_prometheus_javaagent.jar=7072:/app/config/kafka-metrics.yml"
+    volumes:
+      - ./config/kafka/config:/app/config
+    ports:
+      - 7072:7072
+
+  controller-3:
+    image: apache/kafka:latest
+    environment:
+      KAFKA_NODE_ID: 3
+      KAFKA_PROCESS_ROLES: controller
+      KAFKA_LISTENERS: CONTROLLER://:9093
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@controller-1:9093,2@controller-2:9093,3@controller-3:9093
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_OPTS: "-javaagent:/app/config/jmx_prometheus_javaagent.jar=7073:/app/config/kafka-metrics.yml"
+    volumes:
+      - ./config/kafka/config:/app/config
+    ports:
+      - 7073:7073
+
+  broker-1:
+    image: apache/kafka:latest
+    ports:
+      - 29092:9092
+      - 7074:7074
+    environment:
+      KAFKA_NODE_ID: 4
+      KAFKA_PROCESS_ROLES: broker
+      KAFKA_LISTENERS: 'PLAINTEXT://:19092,PLAINTEXT_HOST://:9092'
+      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://broker-1:19092,PLAINTEXT_HOST://localhost:29092'
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@controller-1:9093,2@controller-2:9093,3@controller-3:9093
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_OPTS: "-javaagent:/app/config/jmx_prometheus_javaagent.jar=7074:/app/config/kafka-metrics.yml"
+    volumes:
+      - ./config/kafka/config:/app/config
+    depends_on:
+      - controller-1
+      - controller-2
+      - controller-3
+
+  broker-2:
+    image: apache/kafka:latest
+    ports:
+      - 39092:9092
+      - 7075:7075
+    environment:
+      KAFKA_NODE_ID: 5
+      KAFKA_PROCESS_ROLES: broker
+      KAFKA_LISTENERS: 'PLAINTEXT://:19092,PLAINTEXT_HOST://:9092'
+      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://broker-2:19092,PLAINTEXT_HOST://localhost:39092'
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@controller-1:9093,2@controller-2:9093,3@controller-3:9093
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_OPTS: "-javaagent:/app/config/jmx_prometheus_javaagent.jar=7075:/app/config/kafka-metrics.yml"
+    volumes:
+      - ./config/kafka/config:/app/config
+    depends_on:
+      - controller-1
+      - controller-2
+      - controller-3
+
+  broker-3:
+    image: apache/kafka:latest
+    ports:
+      - 49092:9092
+      - 7076:7076
+    environment:
+      KAFKA_NODE_ID: 6
+      KAFKA_PROCESS_ROLES: broker
+      KAFKA_LISTENERS: 'PLAINTEXT://:19092,PLAINTEXT_HOST://:9092'
+      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://broker-3:19092,PLAINTEXT_HOST://localhost:49092'
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@controller-1:9093,2@controller-2:9093,3@controller-3:9093
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_OPTS: "-javaagent:/app/config/jmx_prometheus_javaagent.jar=7076:/app/config/kafka-metrics.yml"
+    volumes:
+      - ./config/kafka/config:/app/config
+    depends_on:
+      - controller-1
+      - controller-2
+      - controller-3
+
+  prometheus:
+    image: prom/prometheus
+    ports:
+      - 9090:9090
+    volumes:
+      - ./config/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+
+  grafana:
+    image: grafana/grafana
+    ports:
+      - 3000:3000
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=1234
+    volumes:
+      - ./config/grafana/provisioning:/etc/grafana/provisioning
+
+  file-storage-service:
+    build:
+      context: .
+      dockerfile: ./images/file-storage-service/Dockerfile
+    image: file-storage-service
+    ports:
+      - 50051:50051
+    environment:
+      - MINIO_ROOT_USER=myaccesskey
+      - MINIO_ROOT_PASSWORD=mysecretkey
+    depends_on:
+      - minio
+
+  minio:
+    image: quay.io/minio/minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: myaccesskey
+      MINIO_ROOT_PASSWORD: mysecretkey
+      MINIO_PROMETHEUS_AUTH_TYPE: public
+    volumes:
+      - minio-data:/data
+    command: server /data --console-address ":9001"
+
+  video-uploader:
+    build:
+      context: ./images/video-uploader
+      dockerfile: Dockerfile
+    image: video-uploader
+    ports:
+      - 8000:8000
+    environment:
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ROOT_USER=myaccesskey
+      - MINIO_ROOT_PASSWORD=mysecretkey
+      - KAFKA_BOOTSTRAP_SERVERS=broker-1:9092,broker-2:9092,broker-3:9092
+    depends_on:
+      - minio
+
+  # database-crud:
+  #   image: database-crud
+  #   ports:
+  #     - 8081:8081
+  #   environment:
+  #     - POSTGRES_USER=postgres
+  #     - POSTGRES_PASSWORD=postgres
+  #     - POSTGRES_DB=postgres
+  
+  #   mongodb:
+  #   image: mongo
+  #   container_name: mongodb
+  #   ports:
+  #     - 27017:27017
+
+volumes:
+  minio-data:

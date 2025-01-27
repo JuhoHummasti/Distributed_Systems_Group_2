@@ -1,1 +1,0 @@
-docker build -t file_storage_service -f Dockerfile .
