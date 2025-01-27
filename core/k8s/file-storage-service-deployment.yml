@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: file-storage-service
-          image: file-storage-service
+          image: matluuk/ds-file-storage-service
           ports:
             - containerPort: 50051
           env:

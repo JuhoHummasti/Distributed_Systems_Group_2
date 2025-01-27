@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: kafka
-          image: apache/kafka:latest
+          image: matluuk/ds-kafka:latest
           env:
             - name: KAFKA_NODE_ID
               value: "1"
@@ -34,7 +34,9 @@ spec:
               value: "-javaagent:/app/config/jmx_prometheus_javaagent.jar=7071:/app/config/kafka-metrics.yml"
           ports:
             - containerPort: 9093
+              name: controller-port
             - containerPort: 7071
+              name: metrics-port
           volumeMounts:
             - name: config-volume
               mountPath: /app/config
@@ -51,8 +53,10 @@ spec:
   ports:
     - port: 9093
       targetPort: 9093
+      name: controller-port
     - port: 7071
       targetPort: 7071
+      name: metrics-port
   selector:
     app: kafka
 ---

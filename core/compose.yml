@@ -1,6 +1,9 @@
 services:
   controller-1:
-    image: apache/kafka:latest
+    image: matluuk/ds-kafka:latest
+    build:
+      context: ./images/kafka
+      dockerfile: Dockerfile
     environment:
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: controller
@@ -16,7 +19,10 @@ services:
       - 7071:7071
 
   controller-2:
-    image: apache/kafka:latest
+    image: matluuk/ds-kafka:latest
+    build:
+      context: ./images/kafka
+      dockerfile: Dockerfile
     environment:
       KAFKA_NODE_ID: 2
       KAFKA_PROCESS_ROLES: controller
@@ -32,7 +38,10 @@ services:
       - 7072:7072
 
   controller-3:
-    image: apache/kafka:latest
+    image: matluuk/ds-kafka:latest
+    build:
+      context: ./images/kafka
+      dockerfile: Dockerfile
     environment:
       KAFKA_NODE_ID: 3
       KAFKA_PROCESS_ROLES: controller
@@ -48,7 +57,10 @@ services:
       - 7073:7073
 
   broker-1:
-    image: apache/kafka:latest
+    image: matluuk/ds-kafka:latest
+    build:
+      context: ./images/kafka
+      dockerfile: Dockerfile
     ports:
       - 29092:9092
       - 7074:7074
@@ -71,7 +83,10 @@ services:
       - controller-3
 
   broker-2:
-    image: apache/kafka:latest
+    image: matluuk/ds-kafka:latest
+    build:
+      context: ./images/kafka
+      dockerfile: Dockerfile
     ports:
       - 39092:9092
       - 7075:7075
@@ -94,7 +109,10 @@ services:
       - controller-3
 
   broker-3:
-    image: apache/kafka:latest
+    image: matluuk/ds-kafka:latest
+    build:
+      context: ./images/kafka
+      dockerfile: Dockerfile
     ports:
       - 49092:9092
       - 7076:7076
@@ -133,10 +151,10 @@ services:
       - ./config/grafana/provisioning:/etc/grafana/provisioning
 
   file-storage-service:
+    image: matluuk/ds-file-storage-service
     build:
       context: .
       dockerfile: ./images/file-storage-service/Dockerfile
-    image: file-storage-service
     ports:
       - 50051:50051
     environment:
@@ -159,10 +177,10 @@ services:
     command: server /data --console-address ":9001"
 
   video-uploader:
+    image: matluuk/ds-video-uploader
     build:
       context: ./images/video-uploader
       dockerfile: Dockerfile
-    image: video-uploader
     ports:
       - 8000:8000
     environment:

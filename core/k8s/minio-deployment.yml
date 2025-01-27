@@ -33,7 +33,9 @@ spec:
                   key: MINIO_ROOT_PASSWORD
           ports:
             - containerPort: 9000
+              name: minio-port
             - containerPort: 9001
+              name: console-port
           volumeMounts:
             - name: minio-data
               mountPath: /data
@@ -50,8 +52,10 @@ spec:
   ports:
     - port: 9000
       targetPort: 9000
+      name: minio-port
     - port: 9001
       targetPort: 9001
+      name: console-port
   selector:
     app: minio
 ---
