@@ -1,0 +1,71 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: prometheus
+  template:
+    metadata:
+      labels:
+        app: prometheus
+    spec:
+      containers:
+        - name: prometheus
+          image: prom/prometheus
+          ports:
+            - containerPort: 9090
+          volumeMounts:
+            - name: prometheus-config
+              mountPath: /etc/prometheus
+      volumes:
+        - name: prometheus-config
+          configMap:
+            name: prometheus-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus
+spec:
+  ports:
+    - port: 9090
+      targetPort: 9090
+  selector:
+    app: prometheus
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-config
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 10s
+
+    scrape_configs:
+      - job_name: 'kafka'
+        static_configs:
+          - targets: ['controller-1:7071', 'controller-2:7072', 'controller-3:7073', 'broker-1:7074', 'broker-2:7075', 'broker-3:7076']
+      - job_name: minio-job-cluster
+        metrics_path: /minio/v2/metrics/cluster
+        scheme: http
+        static_configs:
+          - targets: ['minio:9000']
+      - job_name: minio-job-node
+        metrics_path: /minio/v2/metrics/node
+        scheme: http
+        static_configs:
+          - targets: ['minio:9000']
+      - job_name: minio-job-bucket
+        metrics_path: /minio/v2/metrics/bucket
+        scheme: http
+        static_configs:
+          - targets: ['minio:9000']
+      - job_name: minio-job-resource
+        metrics_path: /minio/v2/metrics/resource
+        scheme: http
+        static_configs:
+          - targets: ['minio:9000']

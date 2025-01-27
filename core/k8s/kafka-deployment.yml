@@ -1,0 +1,85 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kafka
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kafka
+  template:
+    metadata:
+      labels:
+        app: kafka
+    spec:
+      containers:
+        - name: kafka
+          image: apache/kafka:latest
+          env:
+            - name: KAFKA_NODE_ID
+              value: "1"
+            - name: KAFKA_PROCESS_ROLES
+              value: "controller"
+            - name: KAFKA_LISTENERS
+              value: "CONTROLLER://:9093"
+            - name: KAFKA_INTER_BROKER_LISTENER_NAME
+              value: "PLAINTEXT"
+            - name: KAFKA_CONTROLLER_LISTENER_NAMES
+              value: "CONTROLLER"
+            - name: KAFKA_CONTROLLER_QUORUM_VOTERS
+              value: "1@controller-1:9093,2@controller-2:9093,3@controller-3:9093"
+            - name: KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS
+              value: "0"
+            - name: KAFKA_OPTS
+              value: "-javaagent:/app/config/jmx_prometheus_javaagent.jar=7071:/app/config/kafka-metrics.yml"
+          ports:
+            - containerPort: 9093
+            - containerPort: 7071
+          volumeMounts:
+            - name: config-volume
+              mountPath: /app/config
+      volumes:
+        - name: config-volume
+          configMap:
+            name: kafka-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka
+spec:
+  ports:
+    - port: 9093
+      targetPort: 9093
+    - port: 7071
+      targetPort: 7071
+  selector:
+    app: kafka
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kafka-config
+data:
+  kafka-metrics.yml: |
+    rules:
+      - pattern: "kafka.server<type=(.+), name=(.+)><>Value"
+        name: "kafka_server_$1_$2"
+        type: GAUGE
+        help: "Kafka server $1 $2"
+      - pattern: "kafka.network<type=(.+), name=(.+)><>Value"
+        name: "kafka_network_$1_$2"
+        type: GAUGE
+        help: "Kafka network $1 $2"
+      - pattern: "kafka.log<type=(.+), name=(.+)><>Value"
+        name: "kafka_log_$1_$2"
+        type: GAUGE
+        help: "Kafka log $1 $2"
+      - pattern: "kafka.controller<type=(.+), name=(.+)><>Value"
+        name: "kafka_controller_$1_$2"
+        type: GAUGE
+        help: "Kafka controller $1 $2"
+      - pattern: "kafka.cluster<type=(.+), name=(.+)><>Value"
+        name: "kafka_cluster_$1_$2"
+        type: GAUGE
+        help: "Kafka cluster $1 $2"
