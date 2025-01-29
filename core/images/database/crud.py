@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
-from database.models import Item, UpdateItem
-from database.database import collection, retrieve_items
+from models import Item, UpdateItem
+from database import collection, retrieve_items
 from bson import ObjectId
 
 router = APIRouter()

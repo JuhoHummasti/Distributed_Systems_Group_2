@@ -1,0 +1,50 @@
+services:
+  minio:
+    image: quay.io/minio/minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: myaccesskey
+      MINIO_ROOT_PASSWORD: mysecretkey
+      MINIO_PROMETHEUS_AUTH_TYPE: public
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+
+  cache-controller:
+    build:
+      context: ./cache-controller
+      dockerfile: Dockerfile
+    container_name: cache-controller
+    ports:
+      - "5001:5001"
+    volumes:
+      - ./cache-controller:/app
+    environment:
+      - PYTHONUNBUFFERED=1
+    networks:
+      - app-network
+
+  streaming-controller:
+    build: ./streaming-controller
+    ports:
+      - "8000:8000"
+    environment:
+      - MINIO_HOST=minio
+      - MINIO_PORT=9000
+      - MINIO_ACCESS_KEY=myaccesskey
+      - MINIO_SECRET_KEY=mysecretkey
+      - MINIO_BUCKET=cache
+    depends_on:
+      - minio
+    volumes:
+      - hls_data:/tmp/hls_videos
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  minio_data:
+  hls_data:

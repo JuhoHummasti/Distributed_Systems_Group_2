@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from database.crud import router
+from crud import router
 
 app = FastAPI()
 
