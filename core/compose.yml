@@ -139,6 +139,7 @@ services:
     image: file-storage-service
     ports:
       - 50051:50051
+      - 8001:8000
     environment:
       - MINIO_ROOT_USER=myaccesskey
       - MINIO_ROOT_PASSWORD=mysecretkey
