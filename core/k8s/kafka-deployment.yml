@@ -38,13 +38,6 @@ spec:
               name: controller-port
             - containerPort: 7071
               name: metrics-port
-          volumeMounts:
-            - name: config-volume
-              mountPath: /app/config
-      volumes:
-        - name: config-volume
-          configMap:
-            name: kafka-config
 ---
 apiVersion: v1
 kind: Service
