@@ -7,19 +7,25 @@ from confluent_kafka import Producer
 import os
 import uuid
 import json
+import uvicorn
 from typing import List
 from pydantic import BaseModel
 from datetime import datetime, timezone
+from profiler_middleware import ProfilerMiddleware
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 app = FastAPI()
 
+# Add the profiler middleware if enabled
+if os.getenv("ENABLE_PROFILER") == "1":
+    app.add_middleware(ProfilerMiddleware)
+
 # Minio configuration using environment variables
 minio_client = Minio(
-    os.getenv("MINIO_ENDPOINT", "minio:9000"),
+    os.getenv("MINIO_ENDPOINT", "localhost:9000"),
     access_key=os.getenv("MINIO_ROOT_USER", "myaccesskey"),
     secret_key=os.getenv("MINIO_ROOT_PASSWORD", "mysecretkey"),
     secure=False
@@ -27,7 +33,7 @@ minio_client = Minio(
 
 # Kafka configuration using environment variables
 kafka_conf = {
-    'bootstrap.servers': os.getenv("KAFKA_BOOTSTRAP_SERVERS", 'broker-1:29092,broker-2:39092,broker-3:49092'),
+    'bootstrap.servers': os.getenv("KAFKA_BOOTSTRAP_SERVERS"),
     'client.id': 'video_storage',
 }
 
@@ -47,8 +53,13 @@ if not minio_client.bucket_exists(BUCKET_NAME):
     minio_client.make_bucket(BUCKET_NAME)
 
 def send_kafka_message(topic, message):
-    producer.produce(topic, json.dumps(message).encode('utf-8'))
-    producer.flush()
+    def delivery_report(err, msg):
+        if err is not None:
+            print(f"Message delivery failed: {err}")
+        else:
+            print(f"Message delivered to {msg.topic()} [{msg.partition()}]")
+
+    producer.produce(topic, json.dumps(message).encode('utf-8'), callback=delivery_report)
 
 @app.post("/upload/", response_model=VideoMetadata)
 async def upload_video(file: UploadFile):
@@ -159,3 +170,6 @@ async def delete_video(video_id: str):
     except Exception as e:
         logger.error("Error deleting video: %s", e)
         raise HTTPException(status_code=404, detail=str(e))
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8000, log_level="debug")

@@ -19,6 +19,8 @@ ENV MINIO_ENDPOINT=minio:9000
 ENV MINIO_ROOT_USER=myaccesskey
 ENV MINIO_ROOT_PASSWORD=mysecretkey
 ENV KAFKA_BOOTSTRAP_SERVERS=broker-1:29092,broker-2:39092,broker-3:49092
+ENV PYTHONDEBUG=0
+ENV ENABLE_PROFILER=0
 
-# Run the application
-CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]
+# Run the application with debug log level
+CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000", "--log-level", "debug"]
