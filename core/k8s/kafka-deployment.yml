@@ -1,9 +1,50 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kafka-config
+data:
+  server.properties: |
+    process.roles=broker,controller
+    node.id=1
+    controller.quorum.voters=1@kafka-0.kafka-headless.default.svc.cluster.local:9093,2@kafka-1.kafka-headless.default.svc.cluster.local:9093,3@kafka-2.kafka-headless.default.svc.cluster.local:9093
+    listeners=PLAINTEXT://:9092,CONTROLLER://:9093
+    inter.broker.listener.name=PLAINTEXT
+    listener.security.protocol.map=PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
+    log.dirs=/var/lib/kafka/data
+    num.network.threads=3
+    num.io.threads=8
+    socket.send.buffer.bytes=102400
+    socket.receive.buffer.bytes=102400
+    socket.request.max.bytes=104857600
+    log.retention.hours=168
+    log.segment.bytes=1073741824
+    log.retention.check.interval.ms=300000
+    zookeeper.connect=localhost:2181
+    group.initial.rebalance.delay.ms=0
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka-headless
+spec:
+  ports:
+    - port: 9092
+      name: broker-port
+    - port: 9093
+      name: controller-port
+  clusterIP: None
+  selector:
+    app: kafka
+
+---
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: kafka
 spec:
-  replicas: 1
+  serviceName: kafka-headless
+  replicas: 3
   selector:
     matchLabels:
       app: kafka
@@ -15,69 +56,64 @@ spec:
       containers:
         - name: kafka
           image: matluuk/ds-kafka:latest
-          imagePullPolicy: Always
+          ports:
+            - containerPort: 9092
+              name: broker-port
+            - containerPort: 9093
+              name: controller-port
+          volumeMounts:
+            - name: kafka-data
+              mountPath: /var/lib/kafka/data
+            - name: kafka-config
+              mountPath: /app/config
           env:
             - name: KAFKA_NODE_ID
-              value: "1"
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
             - name: KAFKA_PROCESS_ROLES
-              value: "controller"
+              value: "broker,controller"
             - name: KAFKA_LISTENERS
-              value: "CONTROLLER://:9093"
+              value: "PLAINTEXT://:9092,CONTROLLER://:9093"
             - name: KAFKA_INTER_BROKER_LISTENER_NAME
               value: "PLAINTEXT"
             - name: KAFKA_CONTROLLER_LISTENER_NAMES
               value: "CONTROLLER"
             - name: KAFKA_CONTROLLER_QUORUM_VOTERS
-              value: "1@controller-1:9093,2@controller-2:9093,3@controller-3:9093"
-            - name: KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS
-              value: "0"
-            - name: KAFKA_OPTS
-              value: "-javaagent:/app/config/jmx_prometheus_javaagent.jar=7071:/app/config/kafka-metrics.yml"
-          ports:
-            - containerPort: 9093
-              name: controller-port
-            - containerPort: 7071
-              name: metrics-port
+              value: "1@kafka-0.kafka-headless.default.svc.cluster.local:9093,2@kafka-1.kafka-headless.default.svc.cluster.local:9093,3@kafka-2.kafka-headless.default.svc.cluster.local:9093"
+            - name: KAFKA_LOG_DIRS
+              value: "/var/lib/kafka/data"
+      volumes:
+        - name: kafka-data
+          persistentVolumeClaim:
+            claimName: kafka-pvc
+        - name: kafka-config
+          configMap:
+            name: kafka-config
+
 ---
 apiVersion: v1
-kind: Service
+kind: PersistentVolume
 metadata:
-  name: kafka
+  name: kafka-pv
 spec:
-  ports:
-    - port: 9093
-      targetPort: 9093
-      name: controller-port
-    - port: 7071
-      targetPort: 7071
-      name: metrics-port
-  selector:
-    app: kafka
+  capacity:
+    storage: 10Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: manual
+  hostPath:
+    path: "/mnt/data/kafka"
 ---
 apiVersion: v1
-kind: ConfigMap
+kind: PersistentVolumeClaim
 metadata:
-  name: kafka-config
-data:
-  kafka-metrics.yml: |
-    rules:
-      - pattern: "kafka.server<type=(.+), name=(.+)><>Value"
-        name: "kafka_server_$1_$2"
-        type: GAUGE
-        help: "Kafka server $1 $2"
-      - pattern: "kafka.network<type=(.+), name=(.+)><>Value"
-        name: "kafka_network_$1_$2"
-        type: GAUGE
-        help: "Kafka network $1 $2"
-      - pattern: "kafka.log<type=(.+), name=(.+)><>Value"
-        name: "kafka_log_$1_$2"
-        type: GAUGE
-        help: "Kafka log $1 $2"
-      - pattern: "kafka.controller<type=(.+), name=(.+)><>Value"
-        name: "kafka_controller_$1_$2"
-        type: GAUGE
-        help: "Kafka controller $1 $2"
-      - pattern: "kafka.cluster<type=(.+), name=(.+)><>Value"
-        name: "kafka_cluster_$1_$2"
-        type: GAUGE
-        help: "Kafka cluster $1 $2"
+  name: kafka-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: manual
