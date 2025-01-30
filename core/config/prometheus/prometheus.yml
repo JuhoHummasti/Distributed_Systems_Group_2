@@ -26,3 +26,6 @@ scrape_configs:
     scheme: http
     static_configs:
       - targets: ['minio:9000']
+  - job_name: file-storage-service
+    static_configs:
+      - targets: ['file-storage-service:8000']
