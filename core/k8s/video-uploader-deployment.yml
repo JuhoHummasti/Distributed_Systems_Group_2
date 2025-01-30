@@ -15,6 +15,7 @@ spec:
       containers:
         - name: video-uploader
           image: matluuk/ds-video-uploader
+          imagePullPolicy: Always
           ports:
             - containerPort: 8000
           env:

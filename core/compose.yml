@@ -192,7 +192,7 @@ services:
     build:
       context: ./images/database
       dockerfile: Dockerfile
-    image: database-service
+    image: matluuk/ds-database-service
     ports:
       - "8011:8011"
     environment:
@@ -204,7 +204,7 @@ services:
     build:
       context: ./images/request-controller
       dockerfile: Dockerfile
-    image: request-controller
+    image: matluuk/ds-request-controller
     ports:
       - "8080:8080"
     environment:

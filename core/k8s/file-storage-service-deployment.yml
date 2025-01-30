@@ -15,6 +15,7 @@ spec:
       containers:
         - name: file-storage-service
           image: matluuk/ds-file-storage-service
+          imagePullPolicy: Always
           ports:
             - containerPort: 50051
           env:
