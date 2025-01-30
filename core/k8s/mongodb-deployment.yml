@@ -49,12 +49,14 @@ spec:
       storage: 10Gi
 ---
 apiVersion: v1
-kind: PersistentVolumeClaim
+kind: PersistentVolume
 metadata:
-  name: mongodb-pvc
+  name: mongodb-pv
 spec:
+  capacity:
+    storage: 10Gi
   accessModes:
     - ReadWriteOnce
-  resources:
-    requests:
-      storage: 10Gi
+  persistentVolumeReclaimPolicy: Retain
+  hostPath:
+    path: /mnt/data/mongodb
