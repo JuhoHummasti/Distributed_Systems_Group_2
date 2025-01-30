@@ -1,4 +1,4 @@
 FROM apache/kafka:latest
 
-# Add the JMX Prometheus Java Agent JAR file
-COPY config /app/config/jmx_prometheus_javaagent.jar
+# Copy the config to the container
+COPY config /app/config/
