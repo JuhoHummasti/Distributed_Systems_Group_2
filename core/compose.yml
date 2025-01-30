@@ -143,7 +143,6 @@ services:
     build:
       context: ./images/file-storage-service
       dockerfile: Dockerfile
-    image: file-storage-service
     ports:
       - 50051:50051
       - 8001:8000
