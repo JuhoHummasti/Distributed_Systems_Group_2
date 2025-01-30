@@ -20,7 +20,7 @@ class ProfilerMiddleware(BaseHTTPMiddleware):
         ps.print_stats()
         
         endpoint = request.url.path.replace("/", "_").strip("_")
-        profiler_dir = "profiler_results"
+        profiler_dir = "/profiler_results"
         os.makedirs(profiler_dir, exist_ok=True)
         
         # Save plaintext profile
