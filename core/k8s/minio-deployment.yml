@@ -72,6 +72,19 @@ spec:
       storage: 20Gi
 ---
 apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: minio-pv
+spec:
+  capacity:
+    storage: 20Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  hostPath:
+    path: /mnt/data/minio
+---
+apiVersion: v1
 kind: Secret
 metadata:
   name: minio-secret
