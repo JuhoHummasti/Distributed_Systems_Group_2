@@ -1,7 +1,7 @@
 import ReactHlsPlayer from "react-hls-player";
 
-const VideoPlayer = () => {
-  const videoUrl = "http://localhost:8000/stream/test.mp4/playlist.m3u8";
+const VideoPlayer = ({ video_id }) => {
+  const videoUrl = `http://localhost:8054/stream/${video_id}/playlist.m3u8`;
 
   return (
     <div className="w-full flex flex-col items-center min-h-screen bg-gray-100 p-6">

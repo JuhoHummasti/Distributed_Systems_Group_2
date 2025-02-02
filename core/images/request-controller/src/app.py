@@ -67,11 +67,11 @@ async def get_all_videos():
         except httpx.HTTPError as e:
             raise HTTPException(status_code=503, detail="Database service unavailable")
 
-@app.get("/video/{video_id}")
+@app.get("/videos/{video_id}")
 async def get_video(video_id: str):
     async with httpx.AsyncClient() as client:
         try:
-            response = await client.get(f"{DATABASE_SERVICE_URL}/items/{video_id}")
+            response = await client.get(f"{DATABASE_SERVICE_URL}/api/v1/items/videos?filter={{'video_id':'{video_id}'}}")            
             response.raise_for_status()
             return response.json()
         except httpx.HTTPStatusError as e:

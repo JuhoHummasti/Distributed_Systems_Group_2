@@ -15,19 +15,11 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     # MinIO settings
-    minio_host: str = os.getenv("MINIO_HOST", "localhost")
+    minio_host: str = os.getenv("MINIO_HOST", "minio")
     minio_port: str = os.getenv("MINIO_PORT", "9000")
     minio_access_key: str = os.getenv("MINIO_ACCESS_KEY", "minioadmin")
     minio_secret_key: str = os.getenv("MINIO_SECRET_KEY", "minioadmin")
     minio_bucket: str = os.getenv("MINIO_BUCKET", "videos")
-    
-    # HLS settings
-    hls_segment_duration: int = int(os.getenv("HLS_SEGMENT_DURATION", "10"))
-    hls_cleanup_interval: int = int(os.getenv("HLS_CLEANUP_INTERVAL", "3600"))
-    hls_max_age: int = int(os.getenv("HLS_MAX_AGE", "3600"))
-    
-    # Storage settings
-    storage_path: str = os.getenv("STORAGE_PATH", "/tmp/hls_videos")
     
     class Config:
         env_file = ".env"
@@ -55,80 +47,10 @@ minio_client = Minio(
     secure=False
 )
 
-# Create storage directory
-VIDEOS_DIR = Path(settings.storage_path)
-VIDEOS_DIR.mkdir(parents=True, exist_ok=True)
-
-async def create_hls_stream(video_path: str, output_dir: Path) -> None:
-    """Create HLS stream using ffmpeg subprocess"""
-    output_dir.mkdir(exist_ok=True)
-    
-    cmd = [
-        'ffmpeg',
-        '-i', video_path,
-        '-profile:v', 'baseline',
-        '-level', '3.0',
-        '-start_number', '0',
-        '-hls_time', str(settings.hls_segment_duration),
-        '-hls_list_size', '0',
-        '-f', 'hls',
-        str(output_dir / 'playlist.m3u8')
-    ]
-    
-    process = await asyncio.create_subprocess_exec(
-        *cmd,
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE
-    )
-    
-    stdout, stderr = await process.communicate()
-    
-    if process.returncode != 0:
-        logger.error(f"FFmpeg error: {stderr.decode()}")
-        raise Exception(f"FFmpeg failed with return code {process.returncode}")
-
-async def get_video_path(video_id: str) -> Path:
-    """Get or download video from MinIO"""
-    video_path = VIDEOS_DIR / video_id
-    hls_dir = VIDEOS_DIR / f"{video_id}_hls"
-    
-    if not video_path.exists():
-        try:
-            # Download from MinIO if not already downloaded
-            await asyncio.to_thread(
-                minio_client.fget_object,
-                settings.minio_bucket,
-                video_id,
-                str(video_path)
-            )
-            logger.info(f"Downloaded video {video_id} from MinIO")
-            
-            # Create HLS stream
-            await create_hls_stream(str(video_path), hls_dir)
-            logger.info(f"Created HLS segments for {video_id}")
-            
-        except Exception as e:
-            logger.error(f"Failed to process video {video_id}: {e}")
-            raise HTTPException(status_code=500, detail=str(e))
-    
-    if not (hls_dir / "playlist.m3u8").exists():
-        try:
-            await create_hls_stream(str(video_path), hls_dir)
-        except Exception as e:
-            logger.error(f"Failed to create HLS stream: {e}")
-            raise HTTPException(status_code=500, detail=str(e))
-    
-    return hls_dir
 
 @app.on_event("startup")
 async def startup_event():
     """Initialize service"""
-    logger.info("Starting HLS Streaming Service with configuration:")
-    logger.info(f"MinIO Endpoint: {settings.minio_host}:{settings.minio_port}")
-    logger.info(f"MinIO Bucket: {settings.minio_bucket}")
-    logger.info(f"Storage Path: {settings.storage_path}")
-    logger.info(f"HLS Segment Duration: {settings.hls_segment_duration}s")
-    
     try:
         if not minio_client.bucket_exists(settings.minio_bucket):
             minio_client.make_bucket(settings.minio_bucket)
@@ -141,13 +63,23 @@ async def startup_event():
 async def get_playlist(video_id: str):
     """Get the HLS playlist file"""
     try:
-        hls_dir = await get_video_path(video_id)
-        playlist_path = hls_dir / "playlist.m3u8"
-        return FileResponse(
-            path=playlist_path,
+        bucket_name = "cache"
+        object_name = f"hls/{video_id}/playlist.m3u8"
+        
+        # Check if the object exists
+        try:
+            minio_client.stat_object(bucket_name, object_name)
+        except Exception:
+            raise HTTPException(status_code=404, detail="Playlist not found")
+        
+        # Retrieve the object
+        response = minio_client.get_object(bucket_name, object_name)
+        
+        return StreamingResponse(
+            response.stream(),
             media_type="application/vnd.apple.mpegurl",
-            filename="playlist.m3u8"
-        )
+            headers={"Content-Disposition": f"filename=playlist.m3u8"}
+        ) 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -155,16 +87,22 @@ async def get_playlist(video_id: str):
 async def get_segment(video_id: str, segment_file: str):
     """Get individual HLS segment"""
     try:
-        hls_dir = await get_video_path(video_id)
-        segment_path = hls_dir / segment_file
+        bucket_name = "cache"
+        object_name = f"hls/{video_id}/{segment_file}"
         
-        if not segment_path.exists():
+        # Check if the object exists
+        try:
+            minio_client.stat_object(bucket_name, object_name)
+        except Exception:
             raise HTTPException(status_code=404, detail="Segment not found")
-            
-        return FileResponse(
-            path=segment_path,
+        
+        # Retrieve the object
+        response = minio_client.get_object(bucket_name, object_name)
+        
+        return StreamingResponse(
+            response.stream(), 
             media_type="video/MP2T",
-            filename=segment_file
+            headers={"Content-Disposition": f"filename={segment_file}"}
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

@@ -1,7 +1,9 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Query, HTTPException
 from models import Item, UpdateItem
 from database import collection, retrieve_items
 from bson import ObjectId
+from typing import Optional, Dict, Any
+import json
 
 router = APIRouter()
 
@@ -23,6 +25,50 @@ async def get_items():
     items = await retrieve_items()
     #items = [item_helper(item) for item in collection.find()]
     return items
+
+@router.get("/items/{collection}")
+async def get_items_by_collection(
+    collection: str, 
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=1000),
+    filter: Optional[str] = Query(None)
+):
+    """
+    Retrieve items from a specified collection with optional filtering, pagination, and sorting.
+    
+    - `collection`: Name of the MongoDB collection to query
+    - `skip`: Number of documents to skip (for pagination)
+    - `limit`: Maximum number of documents to return
+    - `filter`: Optional dictionary of query filters
+    
+    Example queries:
+    - Basic: `/items/users`
+    - With filter: `/items/products?filter={"category":"electronics"}`
+    - With pagination: `/items/orders?skip=10&limit=20`
+    """
+    try:
+        query_filter = {}
+        if filter:
+            try:
+                # Parse the filter string directly
+                filter_str = filter.replace("'", '"')
+                query_filter = json.loads(filter_str)
+            except json.JSONDecodeError:
+                raise HTTPException(status_code=400, detail="Invalid filter format")
+        
+        # Retrieve items from the specified collection
+        items = await retrieve_items(
+            collection_name=collection, 
+            query_filter=query_filter,
+            skip=skip,
+            limit=limit
+        )
+        
+        return items
+    
+    except Exception as e:
+        # Handle potential errors (e.g., collection not found, invalid filter)
+        raise HTTPException(status_code=400, detail=str(e))
 
 # Read an item by ID
 @router.get("/items/{item_id}")

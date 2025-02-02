@@ -19,7 +19,7 @@ import file_storage_service_pb2_grpc
 class CacheController:
     def __init__(self):
         self.minio_client = Minio(
-            "localhost:9000",
+            "minio:9000",
             access_key="myaccesskey",
             secret_key="mysecretkey",
             secure=False

@@ -2,8 +2,8 @@ services:
   minio:
     image: quay.io/minio/minio
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "9043:9000"
+      - "9044:9001"
     environment:
       MINIO_ROOT_USER: myaccesskey
       MINIO_ROOT_PASSWORD: mysecretkey
@@ -29,7 +29,7 @@ services:
   streaming-controller:
     build: ./streaming-controller
     ports:
-      - "8000:8000"
+      - "8054:8000"
     environment:
       - MINIO_HOST=minio
       - MINIO_PORT=9000

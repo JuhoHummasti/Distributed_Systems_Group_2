@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 
 const VideoGrid = () => {
   const [videos, setVideos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchVideos = async () => {
@@ -23,6 +25,10 @@ const VideoGrid = () => {
 
     fetchVideos();
   }, []);
+
+  const handleVideoClick = (videoId) => {
+    navigate(`/video/${videoId}`);
+  };
 
   if (loading) {
     return (
@@ -54,7 +60,8 @@ const VideoGrid = () => {
         {videos.map((video) => (
           <div
             key={video.video_id}
-            className="flex flex-col bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300"
+            className="flex flex-col bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300 cursor-pointer"
+            onClick={() => handleVideoClick(video.video_id)}
           >
             <div className="relative pt-[56.25%]">
               <img
