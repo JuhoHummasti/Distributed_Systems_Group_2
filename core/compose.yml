@@ -151,6 +151,14 @@ services:
       - MINIO_ROOT_PASSWORD=mysecretkey
     depends_on:
       - minio
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "7010:7010"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - minio
 
   minio:
     image: quay.io/minio/minio

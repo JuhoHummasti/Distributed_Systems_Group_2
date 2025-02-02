@@ -10,7 +10,7 @@ import uuid
 import json
 import uvicorn
 import tempfile
-import shutil
+import httpx
 from typing import List
 from pydantic import BaseModel
 from datetime import datetime, timezone
@@ -113,6 +113,24 @@ async def upload_video(file: UploadFile, background_tasks: BackgroundTasks):
             "timestamp": datetime.now(timezone.utc).isoformat()
         }
         send_kafka_message("video-uploads", message)
+        
+        # Store video metadata in database service
+        item_data = {
+            "video_id": video_id,
+            "status": "processing",
+            "title": file.filename,
+            "time_created": datetime.utcnow().isoformat(),
+            "time_updated": None
+        }
+
+        # Store video ID in database service
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                "http://database-service:8011/api/v1/items/",
+                json=item_data
+            )
+            if response.status_code != 201:
+                raise HTTPException(status_code=500, detail="Failed to store video metadata")
         
         # Start processing in the background
         video_processor.start_processing(video_id, temp_path)

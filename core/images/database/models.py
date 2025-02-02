@@ -3,14 +3,14 @@ from datetime import datetime
 from typing import Optional
 
 class Item(BaseModel):
-    url: HttpUrl
+    video_id: str
     status: str
-    videoTitle: str
+    title: str
     time_created: datetime = datetime.utcnow()
     time_updated: Optional[datetime] = None
 
 class UpdateItem(BaseModel):
-    url: Optional[str] = None
-    status: Optional[str] = None
-    videoTitle: Optional[str] = None
-    time_updated: datetime = datetime.utcnow()
+    video_id: str
+    status: str
+    title: str
+    time_updated: Optional[datetime] = None

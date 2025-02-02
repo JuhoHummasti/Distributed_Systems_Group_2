@@ -1,7 +1,7 @@
 import { useState } from "react";
-import VideoPlayer from "./components/VideoPlayer";
 import UploadForm from "./components/UploadForm";
 import Tabs from "./components/Tabs";
+import VideoGrid from "./components/VideoGrid";
 
 const VideoStreamingApp = () => {
   const [activeTab, setActiveTab] = useState("upload");
@@ -17,8 +17,8 @@ const VideoStreamingApp = () => {
 
       <div className="flex-1 p-4">
         {activeTab === "videos" ? (
-          <div className="h-full flex items-center justify-center">
-            <VideoPlayer />
+          <div className="h-full flex justify-center">
+            <VideoGrid />
           </div>
         ) : (
           <UploadForm />

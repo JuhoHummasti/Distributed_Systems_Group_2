@@ -23,7 +23,7 @@ REQUEST_LATENCY = Histogram('file_storage_service_request_latency_seconds', 'Req
 class FileStorageService(file_storage_service_pb2_grpc.FileStorageServiceServicer):
     def __init__(self):
         self.minio_client = Minio(
-            os.getenv("MINIO_ENDPOINT", "minio:9000"),
+            os.getenv("MINIO_ENDPOINT", "nginx:7010"),
             access_key=os.getenv("MINIO_ROOT_USER", "myaccesskey"),
             secret_key=os.getenv("MINIO_ROOT_PASSWORD", "mysecretkey"),
             secure=False
@@ -32,12 +32,17 @@ class FileStorageService(file_storage_service_pb2_grpc.FileStorageServiceService
         if not self.minio_client.bucket_exists(self.bucket_name):
             self.minio_client.make_bucket(self.bucket_name)
     
+    def replace_hostname(self, url: str) -> str:
+        """Replace nginx:7010 with localhost:7010 in the presigned URL."""
+        return url.replace("nginx:7010", "localhost:7010")
+
     @REQUEST_LATENCY.time()
     def GetVideoDownloadUrl(self, request, context):
         REQUEST_COUNT.inc()
         try:
             video_id = request.video_id
             url = self.minio_client.presigned_get_object(self.bucket_name, video_id)
+            url = self.replace_hostname(url)
             SUCCESS_COUNT.inc()
             return file_storage_service_pb2.VideoDownloadUrlResponse(download_url=url)
         except Exception as e:
@@ -45,6 +50,30 @@ class FileStorageService(file_storage_service_pb2_grpc.FileStorageServiceService
             context.set_details(str(e))
             context.set_code(grpc.StatusCode.INTERNAL)
             return file_storage_service_pb2.VideoDownloadUrlResponse()
+
+    @REQUEST_LATENCY.time()
+    def GetBatchVideoDownloadUrls(self, request, context):
+        REQUEST_COUNT.inc()
+        try:
+            urls = {}
+            for video_id in request.video_ids:
+                try:
+                    url = self.minio_client.presigned_get_object(self.bucket_name, video_id)
+                    url = self.replace_hostname(url)
+                    urls[video_id] = url
+                except Exception as e:
+                    # Log the error but continue processing other files
+                    print(f"Error generating URL for {video_id}: {str(e)}")
+                    urls[video_id] = ""
+            
+            SUCCESS_COUNT.inc()
+            return file_storage_service_pb2.BatchVideoDownloadUrlResponse(download_urls=urls)
+        except Exception as e:
+            ERROR_COUNT.inc()
+            context.set_details(str(e))
+            context.set_code(grpc.StatusCode.INTERNAL)
+            return file_storage_service_pb2.BatchVideoDownloadUrlResponse()
+
 
 # Replace the serve_metrics function with:
 def serve_metrics():

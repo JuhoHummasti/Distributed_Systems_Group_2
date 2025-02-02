@@ -4,6 +4,7 @@ package file_storage;
 
 service FileStorageService {
   rpc GetVideoDownloadUrl (VideoDownloadUrlRequest) returns (VideoDownloadUrlResponse);
+  rpc GetBatchVideoDownloadUrls (BatchVideoDownloadUrlRequest) returns (BatchVideoDownloadUrlResponse);
 }
 
 message VideoDownloadUrlRequest {
@@ -12,4 +13,12 @@ message VideoDownloadUrlRequest {
 
 message VideoDownloadUrlResponse {
   string download_url = 1;
+}
+
+message BatchVideoDownloadUrlRequest {
+    repeated string video_ids = 1;
+}
+
+message BatchVideoDownloadUrlResponse {
+    map<string, string> download_urls = 1;
 }
