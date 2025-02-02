@@ -4,7 +4,7 @@ import Tabs from "./components/Tabs";
 import VideoGrid from "./components/VideoGrid";
 
 const VideoStreamingApp = () => {
-  const [activeTab, setActiveTab] = useState("upload");
+  const [activeTab, setActiveTab] = useState("videos");
 
   const tabs = [
     { id: "videos", label: "Videos" },

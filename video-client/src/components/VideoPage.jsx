@@ -61,10 +61,10 @@ const VideoPage = () => {
       >
         Back to Videos
       </button>
-      <div className="">
-        <VideoPlayer video_id={videoId} />
+      <div>
         <h1 className="text-2xl font-bold mb-2">{video.title}</h1>
-        <p className="text-gray-600">{video.description}</p>
+        <p className="text-gray-600 mb-6">{video.description}</p>
+        <VideoPlayer video_id={videoId} />
       </div>
     </div>
   );
