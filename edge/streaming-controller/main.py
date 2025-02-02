@@ -2,7 +2,9 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from minio import Minio
+from minio.error import S3Error
 import os
+import io
 from pathlib import Path
 import tempfile
 import logging
@@ -47,6 +49,14 @@ minio_client = Minio(
     secure=False
 )
 
+# MinIO client configuration
+minio_client_core = Minio(
+    f"{os.getenv("MINIO_HOST_CORE", "host.docker.internal")}:{os.getenv("MINIO_PORT_CORE", "7010")}",
+    access_key=settings.minio_access_key,
+    secret_key=settings.minio_secret_key,
+    secure=False
+)
+
 
 @app.on_event("startup")
 async def startup_event():
@@ -59,51 +69,117 @@ async def startup_event():
         logger.error(f"Error creating bucket: {e}")
         raise
 
+    
 @app.get("/stream/{video_id}/playlist.m3u8")
 async def get_playlist(video_id: str):
-    """Get the HLS playlist file"""
+    """Get the HLS playlist file, retrieving from core storage if not in cache"""
     try:
         bucket_name = "cache"
+        core_bucket_name = "videos"
         object_name = f"hls/{video_id}/playlist.m3u8"
         
-        # Check if the object exists
+        # First, check if the object exists in the local cache
         try:
+            # Attempt to stat the object
             minio_client.stat_object(bucket_name, object_name)
-        except Exception:
-            raise HTTPException(status_code=404, detail="Playlist not found")
-        
-        # Retrieve the object
-        response = minio_client.get_object(bucket_name, object_name)
-        
-        return StreamingResponse(
-            response.stream(),
-            media_type="application/vnd.apple.mpegurl",
-            headers={"Content-Disposition": f"filename=playlist.m3u8"}
-        ) 
+            
+            # If exists, stream from local cache
+            response = minio_client.get_object(bucket_name, object_name)
+            return StreamingResponse(
+                response.stream(),
+                media_type="application/vnd.apple.mpegurl",
+                headers={"Content-Disposition": f"filename=playlist.m3u8"}
+            )
+        except Exception as local_err:
+            print(f"Error checking local cache: {local_err}")
+            
+            # If not in local cache, try to retrieve from core storage
+            try:
+                # Check if object exists in core storage
+                minio_client_core.stat_object(core_bucket_name, object_name)
+                
+                # Retrieve object from core storage
+                response = minio_client_core.get_object(core_bucket_name, object_name)
+                data = response.read()
+                data_size = len(data)
+                
+                # Upload to local cache
+                minio_client.put_object(
+                    bucket_name, 
+                    object_name, 
+                    io.BytesIO(data), 
+                    length=data_size
+                )
+                
+                # Reset the stream for response
+                response_stream = io.BytesIO(data)
+
+                # Return StreamingResponse
+                return StreamingResponse(
+                    response_stream,
+                    media_type="application/octet-stream"  # Adjust media type as needed
+                )
+            except Exception as core_err:
+                # If not found in either location
+                print(f"Error retrieving from core storage: {core_err}")
+                raise HTTPException(status_code=404, detail=f"Playlist not found: {core_err}")
+    
     except Exception as e:
+        print(f"Unexpected error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/stream/{video_id}/{segment_file}")
 async def get_segment(video_id: str, segment_file: str):
-    """Get individual HLS segment"""
+    """Get individual HLS segment, retrieving from core storage if not in cache"""
     try:
         bucket_name = "cache"
+        core_bucket_name = "videos"
         object_name = f"hls/{video_id}/{segment_file}"
         
-        # Check if the object exists
+        # First, check if the object exists in the local cache
         try:
             minio_client.stat_object(bucket_name, object_name)
+            # If exists, stream from local cache
+            response = minio_client.get_object(bucket_name, object_name)
+            return StreamingResponse(
+                response.stream(), 
+                media_type="video/MP2T",
+                headers={"Content-Disposition": f"filename={segment_file}"}
+            )
         except Exception:
-            raise HTTPException(status_code=404, detail="Segment not found")
-        
-        # Retrieve the object
-        response = minio_client.get_object(bucket_name, object_name)
-        
-        return StreamingResponse(
-            response.stream(), 
-            media_type="video/MP2T",
-            headers={"Content-Disposition": f"filename={segment_file}"}
-        )
+            # If not in local cache, try to retrieve from core storage
+            try:
+                # Check if object exists in core storage
+                minio_client_core.stat_object(core_bucket_name, object_name)
+                
+                # Retrieve object from core storage
+                response = minio_client_core.get_object(core_bucket_name, object_name)
+                
+                data = response.read()
+                data_size = len(data)
+                
+                # Upload to local cache
+                minio_client.put_object(
+                    bucket_name, 
+                    object_name, 
+                    io.BytesIO(data), 
+                    length=data_size
+                )
+
+                # Reset the stream for response
+                response_stream = io.BytesIO(data)
+
+                # Return StreamingResponse
+                return StreamingResponse(
+                    response_stream,
+                    media_type="application/octet-stream"  # Adjust media type as needed
+                )
+            except Exception as core_err:
+                print(f"Detailed error: {core_err}")
+                print(f"Error type: {type(core_err)}")
+                # If not found in either location
+                raise HTTPException(status_code=404, detail="Segment not found")
+    
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -116,7 +192,6 @@ async def health_check():
         return {
             "status": "healthy",
             "minio_connection": "ok",
-            "storage_path": str(VIDEOS_DIR),
             "storage_available": True
         }
     except Exception as e:
@@ -124,22 +199,3 @@ async def health_check():
             status_code=503,
             detail=f"Service unhealthy: {str(e)}"
         )
-
-@app.on_event("startup")
-async def setup_cleanup():
-    async def cleanup_old_files():
-        while True:
-            try:
-                current_time = time.time()
-                for item in VIDEOS_DIR.glob("*"):
-                    if current_time - item.stat().st_mtime > settings.hls_max_age:
-                        if item.is_file():
-                            item.unlink()
-                        elif item.is_dir():
-                            shutil.rmtree(item)
-                        logger.info(f"Cleaned up {item}")
-            except Exception as e:
-                logger.error(f"Cleanup error: {e}")
-            await asyncio.sleep(settings.hls_cleanup_interval)
-    
-    asyncio.create_task(cleanup_old_files())

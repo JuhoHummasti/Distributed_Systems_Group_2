@@ -54,15 +54,15 @@ const VideoPage = () => {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="h-screen w-screen px-4 py-8">
       <button
         onClick={() => navigate(-1)}
         className="mb-4 px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 transition"
       >
         Back to Videos
       </button>
-      <div className="max-w-4xl mx-auto">
-        <VideoPlayer videoId={video.video_id} />
+      <div className="">
+        <VideoPlayer video_id={videoId} />
         <h1 className="text-2xl font-bold mb-2">{video.title}</h1>
         <p className="text-gray-600">{video.description}</p>
       </div>

@@ -33,6 +33,8 @@ services:
     environment:
       - MINIO_HOST=minio
       - MINIO_PORT=9000
+      - MINIO_HOST_CORE=host.docker.internal
+      - MINIO_PORT_CORE=9000
       - MINIO_ACCESS_KEY=myaccesskey
       - MINIO_SECRET_KEY=mysecretkey
       - MINIO_BUCKET=cache
