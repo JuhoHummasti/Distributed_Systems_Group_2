@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import ReactHlsPlayer from "react-hls-player";
 
 const VideoPlayer = ({ video_id }) => {
