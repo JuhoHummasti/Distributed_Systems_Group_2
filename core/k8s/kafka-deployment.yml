@@ -20,15 +20,17 @@ spec:
             - name: KAFKA_NODE_ID
               value: "1"
             - name: KAFKA_PROCESS_ROLES
-              value: "controller"
+              value: "broker,controller"
             - name: KAFKA_LISTENERS
-              value: "CONTROLLER://:9093"
+              value: "PLAINTEXT://:9092,CONTROLLER://:9093"
+            - name: KAFKA_ADVERTISED_LISTENERS
+              value: "PLAINTEXT://kafka:9092"
             - name: KAFKA_INTER_BROKER_LISTENER_NAME
               value: "PLAINTEXT"
             - name: KAFKA_CONTROLLER_LISTENER_NAMES
               value: "CONTROLLER"
             - name: KAFKA_CONTROLLER_QUORUM_VOTERS
-              value: "1@controller-1:9093,2@controller-2:9093,3@controller-3:9093"
+              value: "1@kafka:9093"
             - name: KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS
               value: "0"
             - name: KAFKA_OPTS
@@ -53,31 +55,3 @@ spec:
       name: metrics-port
   selector:
     app: kafka
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: kafka-config
-data:
-  kafka-metrics.yml: |
-    rules:
-      - pattern: "kafka.server<type=(.+), name=(.+)><>Value"
-        name: "kafka_server_$1_$2"
-        type: GAUGE
-        help: "Kafka server $1 $2"
-      - pattern: "kafka.network<type=(.+), name=(.+)><>Value"
-        name: "kafka_network_$1_$2"
-        type: GAUGE
-        help: "Kafka network $1 $2"
-      - pattern: "kafka.log<type=(.+), name=(.+)><>Value"
-        name: "kafka_log_$1_$2"
-        type: GAUGE
-        help: "Kafka log $1 $2"
-      - pattern: "kafka.controller<type=(.+), name=(.+)><>Value"
-        name: "kafka_controller_$1_$2"
-        type: GAUGE
-        help: "Kafka controller $1 $2"
-      - pattern: "kafka.cluster<type=(.+), name=(.+)><>Value"
-        name: "kafka_cluster_$1_$2"
-        type: GAUGE
-        help: "Kafka cluster $1 $2"

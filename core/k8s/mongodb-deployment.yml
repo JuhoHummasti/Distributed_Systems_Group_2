@@ -47,11 +47,16 @@ spec:
   resources:
     requests:
       storage: 10Gi
+  selector:
+    matchLabels:
+      type: mongodb-storage
 ---
 apiVersion: v1
 kind: PersistentVolume
 metadata:
   name: mongodb-pv
+  labels:
+    type: mongodb-storage
 spec:
   capacity:
     storage: 10Gi
