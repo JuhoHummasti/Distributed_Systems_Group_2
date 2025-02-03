@@ -9,11 +9,33 @@ import time
 import logging
 import cProfile
 import pstats
+import sys
+from pathlib import Path
+
+# Add test directory to Python path
+test_dir = str(Path(__file__).parent.parent.parent)
+if test_dir not in sys.path:
+    sys.path.append(test_dir)
+
+from utils.port_forward import PortForwarder
 
 API_URL = "http://localhost:8000"
 CHUNK_SIZE = 1024 * 1024  # 1MB chunks
 
 logging.basicConfig(level=logging.DEBUG)
+
+@pytest.fixture(scope="session", autouse=True)
+def port_forwarder():
+    forwarder = PortForwarder()
+    # Add all required services
+    forwarder.start_port_forward("video-uploader", 8000, 8000)
+    #forwarder.start_port_forward("database-service", 8011, 8011)
+    #forwarder.start_port_forward("file-storage-service", 50051, 50051)
+    #forwarder.start_port_forward("minio", 9000, 9000)
+    
+    yield forwarder
+    
+    forwarder.cleanup()
 
 @pytest.fixture(scope="module")
 def temp_dir():
