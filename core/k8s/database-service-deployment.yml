@@ -27,8 +27,8 @@ kind: Service
 metadata:
   name: database-service
 spec:
-  ports:
   type: NodePort
+  ports:
     - port: 8011
       targetPort: 8011
       nodePort: 30003
