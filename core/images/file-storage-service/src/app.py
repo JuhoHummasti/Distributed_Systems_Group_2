@@ -110,15 +110,18 @@ def serve_metrics():
     def router(environ, start_response):
         setup_testing_defaults(environ)
         if environ['PATH_INFO'] == '/metrics':
+            logger.info("Serving metrics endpoint")
             return metrics_app(environ, start_response)
         
         # Return 404 for other paths
+        logger.warning("Received request for unknown path: %s", environ['PATH_INFO'])
         status = '404 Not Found'
         headers = [('Content-type', 'text/plain')]
         start_response(status, headers)
         return [b'Not Found']
 
     httpd = make_server('', 8000, router)
+    logger.info("Metrics server is running on port 8000")
     httpd.serve_forever()
 
 def serve():
