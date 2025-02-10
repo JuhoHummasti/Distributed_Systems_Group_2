@@ -41,7 +41,7 @@ spec:
   ports:
     - port: 3000
       targetPort: 3000
-      nodePort: 3000
+      nodePort: 30300
   selector:
     app: grafana
 ---

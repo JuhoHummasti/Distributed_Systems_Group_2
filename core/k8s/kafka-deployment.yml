@@ -50,11 +50,11 @@ spec:
   ports:
     - port: 9093
       targetPort: 9093
-      nodePort: 9093
+      nodePort: 30093
       name: controller-port
     - port: 7071
       targetPort: 7071
-      nodePort: 7071
+      nodePort: 30071
       name: metrics-port
   selector:
     app: kafka

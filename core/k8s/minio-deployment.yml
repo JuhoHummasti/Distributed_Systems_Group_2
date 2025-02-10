@@ -54,11 +54,11 @@ spec:
   ports:
     - port: 9000
       targetPort: 9000
-      nodePort: 9000
+      nodePort: 30900
       name: minio-port
     - port: 9001
       targetPort: 9001
-      nodePort: 9001
+      nodePort: 30901
       name: console-port
   selector:
     app: minio

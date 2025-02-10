@@ -2,11 +2,6 @@
 
 NAMESPACE="default"
 
-# Check if namespace exists
-if ! kubectl get namespace "$NAMESPACE" &> /dev/null; then
-    echo "Namespace $NAMESPACE does not exist"
-    exit 1
-fi
 
 echo "Cleaning namespace: $NAMESPACE"
 

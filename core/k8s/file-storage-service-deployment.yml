@@ -41,6 +41,6 @@ spec:
   ports:
     - port: 50051
       targetPort: 50051
-      nodePort: 50051
+      nodePort: 30002
   selector:
     app: file-storage-service
