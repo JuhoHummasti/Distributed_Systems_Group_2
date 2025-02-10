@@ -5,3 +5,5 @@ minio==7.2.15
 pydantic-settings==2.7.1
 python-multipart==0.0.20
 aiofiles==24.1.0
+prometheus_fastapi_instrumentator==7.0.2
+prometheus-client=0.21.1

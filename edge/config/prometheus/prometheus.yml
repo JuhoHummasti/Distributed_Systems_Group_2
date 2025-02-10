@@ -1,0 +1,49 @@
+global:
+  scrape_interval: 10s # Default scrape interval
+  evaluation_interval: 10s # How frequently to evaluate rules
+
+scrape_configs:
+  # MinIO metrics scraping configurations
+  - job_name: minio-job-cluster
+    metrics_path: /minio/v2/metrics/cluster
+    scheme: http
+    static_configs:
+      - targets: ["minio:9000"]
+
+  - job_name: minio-job-node
+    metrics_path: /minio/v2/metrics/node
+    scheme: http
+    static_configs:
+      - targets: ["minio:9000"]
+
+  - job_name: minio-job-bucket
+    metrics_path: /minio/v2/metrics/bucket
+    scheme: http
+    static_configs:
+      - targets: ["minio:9000"]
+
+  - job_name: minio-job-resource
+    metrics_path: /minio/v2/metrics/resource
+    scheme: http
+    static_configs:
+      - targets: ["minio:9000"]
+
+  # Cache Controller metrics
+  - job_name: cache-controller
+    static_configs:
+      - targets: ["cache-controller:5001"]
+
+  # Streaming Controller metrics
+  - job_name: streaming-controller
+    static_configs:
+      - targets: ["streaming-controller:8000"]
+
+  # Prometheus self-monitoring
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9091"]
+
+  # Grafana metrics
+  - job_name: grafana
+    static_configs:
+      - targets: ["grafana:3333"]
