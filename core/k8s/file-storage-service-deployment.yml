@@ -37,8 +37,10 @@ kind: Service
 metadata:
   name: file-storage-service
 spec:
+  type: NodePort
   ports:
     - port: 50051
       targetPort: 50051
+      nodePort: 50051
   selector:
     app: file-storage-service
