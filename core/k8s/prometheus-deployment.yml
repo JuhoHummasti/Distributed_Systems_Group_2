@@ -45,13 +45,14 @@ metadata:
   name: prometheus-config
 data:
   prometheus.yml: |
+    # filepath: /home/user/distributed-systems/Distributed_Systems_Group_2/core/prometheus/prometheus.yml
     global:
-      scrape_interval: 10s
+      scrape_interval: 10s # How often to scrape targets by default. Keep short for debugging purposes
 
     scrape_configs:
       - job_name: 'kafka'
         static_configs:
-          - targets: ['controller-1:7071', 'controller-2:7072', 'controller-3:7073', 'broker-1:7074', 'broker-2:7075', 'broker-3:7076']
+          - targets: ['kafka:7071']
       - job_name: minio-job-cluster
         metrics_path: /minio/v2/metrics/cluster
         scheme: http
@@ -72,3 +73,9 @@ data:
         scheme: http
         static_configs:
           - targets: ['minio:9000']
+      - job_name: file-storage-service
+        static_configs:
+          - targets: ['file-storage-service:8000']
+      - job_name: video-uploader
+        static_configs:
+          - targets: ['video-uploader:8000']

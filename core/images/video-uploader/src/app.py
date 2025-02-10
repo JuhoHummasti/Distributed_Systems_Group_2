@@ -2,6 +2,7 @@ import logging
 from fastapi import FastAPI, UploadFile, HTTPException, BackgroundTasks
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
+from prometheus_fastapi_instrumentator import Instrumentator
 from minio import Minio
 from minio.error import S3Error
 from confluent_kafka import Producer
@@ -36,6 +37,9 @@ app.add_middleware(
 # Add the profiler middleware if enabled
 if os.getenv("ENABLE_PROFILER") == "1":
     app.add_middleware(ProfilerMiddleware)
+
+# Add Prometheus instrumentation
+Instrumentator().instrument(app).expose(app)
 
 # Minio configuration using environment variables
 minio_client = Minio(
@@ -229,4 +233,5 @@ async def delete_video(video_id: str):
         raise HTTPException(status_code=404, detail=str(e))
 
 if __name__ == "__main__":
+    logger.info("Starting video uploader service")
     uvicorn.run(app, host="0.0.0.0", port=8000, log_level="debug")
