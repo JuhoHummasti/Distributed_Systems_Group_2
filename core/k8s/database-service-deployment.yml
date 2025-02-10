@@ -31,6 +31,6 @@ spec:
   ports:
     - port: 8011
       targetPort: 8011
-      nodePort: 30003
+      nodePort: 30004
   selector:
     app: database-service
