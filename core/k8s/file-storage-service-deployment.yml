@@ -48,7 +48,8 @@ spec:
     - port: 50051
       targetPort: 50051
       nodePort: 30002
-    - port: 8000 
+      name: grpc  # Add a name for the gRPC port
+    - port: 8000
       targetPort: 8000
       nodePort: 30003
       name: metrics
