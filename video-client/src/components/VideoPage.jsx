@@ -14,7 +14,7 @@ const VideoPage = () => {
       try {
         const response = await fetch(
           `${
-            import.meta.env.REQUEST_API_URL || "http://localhost:8080"
+            import.meta.env.VITE_REQUEST_API_URL || "http://localhost:8080"
           }/videos/${videoId}`
         );
         if (!response.ok) {

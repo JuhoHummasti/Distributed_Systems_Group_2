@@ -18,8 +18,8 @@ spec:
                 name: minio
                 port:
                   number: 9001
-          - path: /stream
-            pathType: Prefix
+          - path: /stream(/|$)(.*)
+            pathType: ImplementationSpecific
             backend:
               service:
                 name: streaming-controller

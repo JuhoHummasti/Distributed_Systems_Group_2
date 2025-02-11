@@ -17,6 +17,9 @@ spec:
       containers:
         - name: prometheus
           image: prom/prometheus
+          args:
+            - "--web.listen-address=0.0.0.0:9091"
+            - "--config.file=/etc/prometheus/prometheus.yml"
           ports:
             - containerPort: 9091
           volumeMounts:

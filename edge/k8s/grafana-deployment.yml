@@ -22,14 +22,15 @@ spec:
           env:
             - name: GF_SECURITY_ADMIN_PASSWORD
               value: "1234"
-              env:
             - name: GF_SERVER_HTTP_PORT
               value: "3333"
             - name: GF_SERVER_ROOT_URL
-              value: "%(protocol)s://%(domain)s/grafana/"
+              value: "http://localhost/grafana"
+            - name: GF_LOG_LEVEL # Add logging for troubleshooting
+              value: "debug"
           volumeMounts:
             - name: grafana-provisioning
-              mountPath: /etc/grafana/provisioning
+              mountPath: /etc/grafana/provisioning/datasources
       volumes:
         - name: grafana-provisioning
           configMap:
@@ -55,13 +56,23 @@ kind: ConfigMap
 metadata:
   name: grafana-provisioning
 data:
-  dashboards.yaml: |
-    # Define dashboard provisioning here, if any. 
-    # You can use this to load Grafana dashboards from a source (JSON, etc.)
   datasources.yaml: |
     apiVersion: 1
     datasources:
       - name: Prometheus
         type: prometheus
+        uid: prometheus
         access: proxy
         url: http://prometheus:9091
+        isDefault: true
+        editable: true
+        version: 1
+        jsonData:
+          timeInterval: "15s"
+          httpMethod: "GET"
+          prometheusType: Prometheus
+          prometheusVersion: 2.x
+          cacheLevel: 'High'
+          manageAlerts: true
+          incrementalQuerying: true
+          incrementalQueryOverlapWindow: "10m"
