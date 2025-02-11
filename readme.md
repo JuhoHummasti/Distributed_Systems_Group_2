@@ -86,6 +86,10 @@ sh core/update_k8s_pods.sh
    kubectl apply -f k8s/
    ```
 
+6. Access Dashboards
+   - MinIO Dashboard: ```http://localhost/minio```
+   - Grafana Dashboard: ```http://localhost/grafana```
+
 # Integration tests
 
 ## Setup
