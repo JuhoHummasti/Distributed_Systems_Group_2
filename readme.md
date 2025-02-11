@@ -1,8 +1,11 @@
 # Telco-Edge CDN for Latency-Sensitive Video Streaming
 
+
+
 # System design
 
 ![System design](images/system_design.png)
+
 
 
 
@@ -54,6 +57,8 @@ git pull
 sh core/update_k8s_pods.sh
 ```
 
+
+
 # Kubernetes for Edge Services
 
 1. Install Prerequisites
@@ -89,6 +94,8 @@ sh core/update_k8s_pods.sh
 6. Access Dashboards
    - MinIO Dashboard: ```http://localhost/minio```
    - Grafana Dashboard: ```http://localhost/grafana```
+
+
 
 # Integration tests
 
