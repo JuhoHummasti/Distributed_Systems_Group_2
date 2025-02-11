@@ -10,7 +10,11 @@ const VideoGrid = () => {
   useEffect(() => {
     const fetchVideos = async () => {
       try {
-        const response = await fetch("http://localhost:8080/videos");
+        const response = await fetch(
+          `${
+            import.meta.env.VITE_REQUEST_API_URL || "http://localhost:8080"
+          }/videos`
+        );
         if (!response.ok) {
           throw new Error("Failed to fetch videos");
         }

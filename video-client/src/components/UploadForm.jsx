@@ -49,7 +49,9 @@ const UploadForm = () => {
 
     try {
       const response = await fetch(
-        `${import.meta.env.UPLOAD_API_URL || "http://localhost:8000"}/upload/`,
+        `${
+          import.meta.env.VITE_UPLOAD_API_URL || "http://localhost:8000"
+        }/upload/`,
         {
           method: "POST",
           body: formData,

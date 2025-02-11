@@ -3,7 +3,7 @@ import ReactHlsPlayer from "react-hls-player";
 
 const VideoPlayer = ({ video_id }) => {
   const videoUrl = `${
-    import.meta.env.STREAM_API_URL || "http://localhost:8054"
+    import.meta.env.VITE_EDGE_API_URL || "http://localhost:8054"
   }/stream/${video_id}/playlist.m3u8`;
 
   return (
