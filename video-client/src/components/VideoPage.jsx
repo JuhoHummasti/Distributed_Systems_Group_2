@@ -12,7 +12,11 @@ const VideoPage = () => {
   useEffect(() => {
     const fetchVideoDetails = async () => {
       try {
-        const response = await fetch(`http://localhost:8080/videos/${videoId}`);
+        const response = await fetch(
+          `${
+            import.meta.env.REQUEST_API_URL || "http://localhost:8080"
+          }/videos/${videoId}`
+        );
         if (!response.ok) {
           throw new Error("Failed to fetch video details");
         }
