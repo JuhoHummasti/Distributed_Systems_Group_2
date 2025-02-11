@@ -48,10 +48,13 @@ const UploadForm = () => {
     formData.append("file", selectedFile);
 
     try {
-      const response = await fetch("http://localhost:8000/upload/", {
-        method: "POST",
-        body: formData,
-      });
+      const response = await fetch(
+        `${import.meta.env.UPLOAD_API_URL || "http://localhost:8000"}/upload/`,
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
 
       if (!response.ok) {
         throw new Error(`Upload failed: ${response.statusText}`);
