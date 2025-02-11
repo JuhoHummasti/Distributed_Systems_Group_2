@@ -56,8 +56,6 @@ sh core/update_k8s_pods.sh
 
 # Kubernetes for Edge Services
 
-# Kubernetes Cluster Setup Instructions
-
 1. Install Prerequisites
    - Install kubectl on your computer
    - Install minikube
