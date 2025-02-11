@@ -6,7 +6,7 @@
 
 
 
-# Kubernetes
+# Kubernetes for Core Services
 
 ## Clean cluster
 
@@ -54,6 +54,39 @@ git pull
 sh core/update_k8s_pods.sh
 ```
 
+# Kubernetes for Edge Services
+
+# Kubernetes Cluster Setup Instructions
+
+1. Install Prerequisites
+   - Install kubectl on your computer
+   - Install minikube
+
+2. Start Minikube
+   ```bash
+   minikube start
+   ```
+
+3. Enable Ingress Addon
+   ```bash
+   minikube addons enable ingress
+   ```
+
+4. Deploy Kubernetes Resources
+   ```bash
+   kubectl apply -f k8s/
+   ```
+
+5. To Clear and Redeploy (if needed)
+   ```bash
+   # Delete all resources in k8s directory
+   kubectl delete -f k8s/
+   
+   # Wait for resources to be fully deleted
+   
+   # Reapply the configuration
+   kubectl apply -f k8s/
+   ```
 
 # Integration tests
 
