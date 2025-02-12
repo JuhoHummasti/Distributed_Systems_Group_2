@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: grafana
-          image: grafana/grafana
+          image: matluuk/grafana
           imagePullPolicy: Always
           ports:
             - containerPort: 3000
@@ -24,13 +24,6 @@ spec:
                 secretKeyRef:
                   name: grafana-secret
                   key: GF_SECURITY_ADMIN_PASSWORD
-          volumeMounts:
-            - name: grafana-provisioning
-              mountPath: /etc/grafana/provisioning/datasources
-      volumes:
-        - name: grafana-provisioning
-          configMap:
-            name: grafana-provisioning
 ---
 apiVersion: v1
 kind: Service
@@ -44,21 +37,6 @@ spec:
       nodePort: 30300
   selector:
     app: grafana
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: grafana-provisioning
-data:
-  "datasources.yml": |
-    apiVersion: 1
-    datasources:
-      - name: Prometheus
-        type: prometheus
-        access: proxy
-        url: http://prometheus:9090
-        isDefault: true
-        editable: true
 ---
 apiVersion: v1
 kind: Secret

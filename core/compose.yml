@@ -130,13 +130,16 @@ services:
       - ./config/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
 
   grafana:
-    image: grafana/grafana
+    image: matluuk/grafana
+    build:
+      context: ./images/grafana
+      dockerfile: Dockerfile
     ports:
       - 3000:3000
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=1234
-    volumes:
-      - ./config/grafana/provisioning:/etc/grafana/provisioning
+    #volumes:
+    #  - ./config/grafana/provisioning:/etc/grafana/provisioning
 
   file-storage-service:
     image: matluuk/ds-file-storage-service
