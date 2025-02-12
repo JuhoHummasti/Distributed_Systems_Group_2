@@ -26,7 +26,7 @@ spec:
                   key: GF_SECURITY_ADMIN_PASSWORD
           volumeMounts:
             - name: grafana-provisioning
-              mountPath: /etc/grafana/provisioning
+              mountPath: /etc/grafana/provisioning/datasources
       volumes:
         - name: grafana-provisioning
           configMap:
@@ -50,9 +50,8 @@ kind: ConfigMap
 metadata:
   name: grafana-provisioning
 data:
-  datasource.yml: |
+  "datasources.yml": |
     apiVersion: 1
-
     datasources:
       - name: Prometheus
         type: prometheus
