@@ -115,6 +115,13 @@ def test_upload_download(temp_dir):
     
     assert original_hash == downloaded_hash
     logging.debug("File comparison successful - hashes match!")
+    
+    # Delete the video after the test
+    logging.debug(f"\nDeleting video with ID: {video_id} after test...")
+    response = requests.delete(f"{API_URL}/video/{video_id}")
+    assert response.status_code == 200
+    assert response.json()['message'] == "Video deleted successfully"
+    logging.debug("Video deleted successfully after test.")
 
 def test_delete_video(temp_dir):
     logging.debug("=== Starting Delete Video Test ===")
