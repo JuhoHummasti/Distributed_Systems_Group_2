@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from prometheus_fastapi_instrumentator import Instrumentator
 import grpc
 import file_storage_service_pb2
 import file_storage_service_pb2_grpc
@@ -18,6 +19,9 @@ app.add_middleware(
     allow_methods=["*"],  # Allows all methods
     allow_headers=["*"],  # Allows all headers
 )
+
+# Add Prometheus instrumentation
+Instrumentator().instrument(app).expose(app)
 
 # Get database service URL from environment variable
 DATABASE_SERVICE_URL = os.getenv("DATABASE_SERVICE_URL", "http://database-service:8011")
