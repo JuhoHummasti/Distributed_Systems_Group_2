@@ -6,45 +6,32 @@
 
 ![System design](images/system_design.png)
 
+# Core
 
+## Grafana dashboards
 
+Here are the origins of provisioned dashboards:
 
-# Kubernetes for Core Services
+|Dashboard           |link|
+|MinIo Dashboard     |https://grafana.com/grafana/dashboards/13502-minio-dashboard/|
+|MinIo Dashboard     |https://grafana.com/grafana/dashboards/13502-minio-dashboard/|
+|Video uploader      |https://github.com/Kludex/fastapi-prometheus-grafana|
+|Request controller  |https://github.com/Kludex/fastapi-prometheus-grafana|
+|Kafka               |https://grafana.com/grafana/dashboards/18276-kafka-dashboard/|
 
-## Clean cluster
+## core Kubernetes deployment
 
-How todelete all pods and related configurations in kubernmetes cluster and prevent the pods from restarting.
-To delete all pods and related configurations in a Kubernetes cluster and prevent the pods from restarting, you can follow these steps:
-
-Delete Deployments, StatefulSets, and DaemonSets: These resources manage the lifecycle of pods. Deleting them will stop the pods from being recreated.
+### Bring up cluster
 
 ```bash
-kubectl delete deployments --all
-kubectl delete statefulsets --all
-kubectl delete daemonsets --all
+kubectl apply -f core/k8s/
 ```
-Delete Pods: This will remove all running pods. Since the managing resources (Deployments, StatefulSets, DaemonSets) are already deleted, the pods will not be recreated.
 
-```bash
-kubectl delete pods --all
-```
-Delete Services, ConfigMaps, and Secrets: These resources are often associated with the pods and their configurations.
+### Clean cluster
 
+Cluster can be cleaned with script. This script deletes all pods and related configs from kubernetes in one namespace. Default value for 'namespace' is 'default' and core is deployed to 'default' namespace.
 ```bash
-kubectl delete services --all
-kubectl delete configmaps --all
-kubectl delete secrets --all
-```
-Delete PersistentVolumeClaims (PVCs) and PersistentVolumes (PVs): If you have any persistent storage, you might want to delete these as well.
-
-```bash
-kubectl delete pvc --all
-kubectl delete pv --all
-```
-Delete Namespaces: If you want to clean up specific namespaces, you can delete them. This will remove all resources within those namespaces.
-
-```bash
-kubectl delete namespace <namespace-name>
+sh clean-k8s-namespace.sh <namespace>
 ```
 
 ## Update kubernetes cluster with new containers
@@ -91,10 +78,14 @@ sh core/update_k8s_pods.sh
    kubectl apply -f k8s/
    ```
 
-6. Access Dashboards
+6. Open tunnel
+```bash
+minikube tunnel
+```
+
+7. Access Dashboards
    - MinIO Dashboard: ```http://localhost/minio```
    - Grafana Dashboard: ```http://localhost/grafana```
-
 
 
 # Integration tests

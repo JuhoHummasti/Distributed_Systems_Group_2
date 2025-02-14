@@ -22,7 +22,7 @@ from process_video import VideoProcessor
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-app = FastAPI()
+app = FastAPI(title="Video uploader service")
 video_processor = VideoProcessor()
 
 # Add CORS middleware

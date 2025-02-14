@@ -79,3 +79,6 @@ data:
       - job_name: video-uploader
         static_configs:
           - targets: ['video-uploader:8000']
+      - job_name: request-controller
+        static_configs:
+          - targets: ['request-controller:8080']

@@ -94,6 +94,7 @@
       "includeVars": true,
       "keepTime": true,
       "tags": [
+        "core", 
         "minio"
       ],
       "type": "dashboards"
@@ -3641,6 +3642,7 @@
   "refresh": "",
   "schemaVersion": 39,
   "tags": [
+    "core",
     "minio"
   ],
   "templating": {
