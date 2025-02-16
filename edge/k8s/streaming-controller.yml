@@ -51,6 +51,8 @@ spec:
                   key: root-password
             - name: MINIO_BUCKET
               value: "cache"
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              value: "195.148.22.181:30093"
           resources:
             requests:
               memory: "512Mi"

@@ -3,19 +3,16 @@ from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from minio import Minio
 from minio.error import S3Error
+import redis
+from datetime import datetime
+import json
 import os
-import io
-from pathlib import Path
-import tempfile
 import logging
-import time
-from typing import Optional
-import subprocess
-import asyncio
-import shutil
+from pydantic import validator
 from pydantic_settings import BaseSettings
 from prometheus_fastapi_instrumentator import Instrumentator
 from prometheus_client import Counter, Histogram, Gauge
+from confluent_kafka import Producer
 
 # Custom metrics
 CACHE_HITS = Counter(
@@ -43,6 +40,21 @@ class Settings(BaseSettings):
     minio_access_key: str = os.getenv("MINIO_ACCESS_KEY", "minioadmin")
     minio_secret_key: str = os.getenv("MINIO_SECRET_KEY", "minioadmin")
     minio_bucket: str = os.getenv("MINIO_BUCKET", "videos")
+
+    # Redis settings
+    redis_host: str = os.getenv("REDIS_HOST", "redis")
+    redis_port: str = os.getenv("REDIS_PORT", "6379")
+    redis_db: int = int(os.getenv("REDIS_DB", "0"))
+    redis_channel: str = os.getenv("REDIS_CHANNEL", "cache_misses")
+
+    kafka_bootstrap_servers: str = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "kafka:9092")
+    kafka_topic: str = os.getenv("KAFKA_TOPIC", "cache_missed")
+
+    @validator('redis_port')
+    def parse_redis_port(cls, v):
+        if ":" in v:
+            return int(v.split(":")[-1])
+        return int(v)
     
     class Config:
         env_file = ".env"
@@ -81,6 +93,92 @@ minio_client_core = Minio(
     secure=False
 )
 
+# Initialize Redis client
+redis_client = redis.Redis(
+    host=settings.redis_host,
+    port=settings.redis_port,
+    db=settings.redis_db,
+    decode_responses=True
+)
+
+kafka_producer = Producer({
+    'bootstrap.servers': settings.kafka_bootstrap_servers,
+    'api.version.request': True
+})
+
+def log_file_request(video_id: str, file_name: str, cache_hit: bool):
+    """Log file request metrics to Redis with complete filename"""
+    timestamp = datetime.now().isoformat()
+    full_path = f"{video_id}/{file_name}"
+    
+    # Determine the key based on hit/miss
+    key = f"hit:{full_path}" if cache_hit else f"missed:{full_path}"
+    
+    # Check if the key exists
+    if not redis_client.exists(key):
+        # Initialize new record
+        initial_data = {
+            "count": 1,
+            "timestamps": [timestamp]
+        }
+        redis_client.set(key, json.dumps(initial_data))
+    else:
+        # Update existing record
+        current_data = json.loads(redis_client.get(key))
+        current_data["count"] += 1
+        current_data["timestamps"].append(timestamp)
+        redis_client.set(key, json.dumps(current_data))
+
+    if not cache_hit:
+        # Prepare cache miss event
+        event = {
+            "timestamp": datetime.now().isoformat(),
+            "video_id": video_id,
+            "file_name": file_name,
+            "event_type": "cache_miss"
+        }
+        
+        # Publish to Redis channel
+        redis_client.publish(
+            settings.redis_channel,
+            json.dumps(event)
+        )
+        logger.info(f"Published cache miss event for {video_id}/{file_name}")
+
+def send_cache_miss_event(video_id: str, file_name: str):
+    """Send cache miss event to Kafka"""
+    try:
+        message = {
+            "timestamp": datetime.now().isoformat(),
+            "video_id": video_id,
+            "file_name": file_name,
+            "event_type": "cache_miss"
+        }
+        
+        # Serialize the message to bytes
+        value = json.dumps(message).encode('utf-8')
+        
+        # Define delivery callback
+        def delivery_callback(err, msg):
+            if err:
+                logger.error(f'Message delivery failed: {err}')
+            else:
+                logger.debug(f'Message delivered to {msg.topic()}')
+        
+        # Produce the message
+        kafka_producer.produce(
+            topic=settings.kafka_topic,
+            value=value,
+            callback=delivery_callback
+        )
+        
+        # Flush to ensure the message is sent
+        kafka_producer.poll(0)  # Trigger any callbacks
+        
+        logger.info(f"Sent cache miss event to Kafka: {message}")
+    except Exception as e:
+        logger.error(f"Failed to send cache miss event to Kafka: {e}")
+
 @app.on_event("startup")
 async def startup_event():
     """Initialize service"""
@@ -107,6 +205,7 @@ async def get_playlist(video_id: str):
             # Attempt to stat the object
             minio_client.stat_object(bucket_name, object_name)
             CACHE_HITS.inc()
+            log_file_request(video_id, "playlist.m3u8", True)  # Log cache hit
             
             # If exists, stream from local cache
             response = minio_client.get_object(bucket_name, object_name)
@@ -117,7 +216,8 @@ async def get_playlist(video_id: str):
             )
         except Exception as local_err:
             CACHE_MISSES.inc()
-            print(f"Error checking local cache: {local_err}")
+            log_file_request(video_id, "playlist.m3u8", False)  # Log cache miss
+            send_cache_miss_event(video_id, "playlist.m3u8")
             
             # If not in local cache, try to retrieve from core storage
             try:
@@ -127,24 +227,12 @@ async def get_playlist(video_id: str):
                     
                     # Retrieve object from core storage
                     response = minio_client_core.get_object(core_bucket_name, object_name)
-                    data = response.read()
-                    data_size = len(data)
                     
-                    # Upload to local cache
-                    minio_client.put_object(
-                        bucket_name, 
-                        object_name, 
-                        io.BytesIO(data), 
-                        length=data_size
-                    )
-                    
-                    # Reset the stream for response
-                    response_stream = io.BytesIO(data)
-
                     # Return StreamingResponse
                     return StreamingResponse(
-                        response_stream,
-                        media_type="application/octet-stream"  # Adjust media type as needed
+                        response.stream(),
+                        media_type="application/vnd.apple.mpegurl",
+                        headers={"Content-Disposition": f"filename=playlist.m3u8"}
                     )
             except Exception as core_err:
                 # If not found in either location
@@ -166,7 +254,9 @@ async def get_segment(video_id: str, segment_file: str):
         # First, check if the object exists in the local cache
         try:
             minio_client.stat_object(bucket_name, object_name)
-            CACHE_HITS.inc()
+            CACHE_HITS.inc()            
+            log_file_request(video_id, segment_file, True)  # Log cache hit
+
             # If exists, stream from local cache
             response = minio_client.get_object(bucket_name, object_name)
             return StreamingResponse(
@@ -176,6 +266,9 @@ async def get_segment(video_id: str, segment_file: str):
             )
         except Exception:
             CACHE_MISSES.inc()
+            log_file_request(video_id, segment_file, False)  # Log cache miss
+            send_cache_miss_event(video_id, segment_file)
+
             # If not in local cache, try to retrieve from core storage
             try:
                 with SEGMENT_RETRIEVAL_TIME.time():
@@ -184,25 +277,11 @@ async def get_segment(video_id: str, segment_file: str):
                     
                     # Retrieve object from core storage
                     response = minio_client_core.get_object(core_bucket_name, object_name)
-                    
-                    data = response.read()
-                    data_size = len(data)
-                    
-                    # Upload to local cache
-                    minio_client.put_object(
-                        bucket_name, 
-                        object_name, 
-                        io.BytesIO(data), 
-                        length=data_size
-                    )
-
-                    # Reset the stream for response
-                    response_stream = io.BytesIO(data)
-
                     # Return StreamingResponse
                     return StreamingResponse(
-                        response_stream,
-                        media_type="application/octet-stream"  # Adjust media type as needed
+                        response.stream(),
+                        media_type="video/MP2T",
+                        headers={"Content-Disposition": f"filename={segment_file}"}
                     )
             except Exception as core_err:
                 print(f"Detailed error: {core_err}")
@@ -212,6 +291,12 @@ async def get_segment(video_id: str, segment_file: str):
     
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Cleanup on shutdown"""
+    kafka_producer.close()
+    logger.info("Kafka producer closed")
 
 @app.get("/health")
 async def health_check():

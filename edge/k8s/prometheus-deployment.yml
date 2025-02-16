@@ -43,7 +43,8 @@ spec:
     - protocol: TCP
       port: 9091
       targetPort: 9091
-  type: ClusterIP
+      nodePort: 30090
+  type: NodePort
 
 ---
 apiVersion: v1
@@ -56,6 +57,7 @@ data:
       scrape_interval: 10s
       evaluation_interval: 10s
     scrape_configs:
+      # MinIO Metrics
       - job_name: minio-job-cluster
         metrics_path: /minio/v2/metrics/cluster
         scheme: http
@@ -76,12 +78,48 @@ data:
         scheme: http
         static_configs:
           - targets: ["minio:9000"]
+      
+      # Cache Controller Metrics
       - job_name: cache-controller
+        metrics_path: /metrics
+        scrape_interval: 5s
         static_configs:
-          - targets: ["cache-controller:5001"]
+          - targets: ["cache-controller:5032"]
+        relabel_configs:
+          - source_labels: [__address__]
+            target_label: instance
+            replacement: cache-controller
+          - source_labels: [__address__]
+            target_label: service
+            replacement: cache-service
+
+      # Redis Metrics
+      - job_name: redis
+        static_configs:
+          - targets: ["redis:6379"]
+        metrics_path: /metrics
+        scrape_interval: 5s
+        relabel_configs:
+          - source_labels: [__address__]
+            target_label: instance
+            replacement: redis
+          - source_labels: [__address__]
+            target_label: service
+            replacement: cache-db
+
+      # Streaming Controller Metrics
       - job_name: streaming-controller
+        metrics_path: /metrics
+        scrape_interval: 5s
         static_configs:
-          - targets: ["streaming-controller:8000"]
+          - targets: ["streaming-controller:8054"]
+        relabel_configs:
+          - source_labels: [__address__]
+            target_label: instance
+            replacement: streaming-controller
+          - source_labels: [__address__]
+            target_label: service
+            replacement: streaming-service
       - job_name: prometheus
         static_configs:
           - targets: ["localhost:9091"]
