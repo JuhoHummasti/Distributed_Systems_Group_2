@@ -127,24 +127,12 @@ async def get_playlist(video_id: str):
                     
                     # Retrieve object from core storage
                     response = minio_client_core.get_object(core_bucket_name, object_name)
-                    data = response.read()
-                    data_size = len(data)
                     
-                    # Upload to local cache
-                    minio_client.put_object(
-                        bucket_name, 
-                        object_name, 
-                        io.BytesIO(data), 
-                        length=data_size
-                    )
-                    
-                    # Reset the stream for response
-                    response_stream = io.BytesIO(data)
-
                     # Return StreamingResponse
                     return StreamingResponse(
-                        response_stream,
-                        media_type="application/octet-stream"  # Adjust media type as needed
+                        response.stream(),
+                        media_type="application/vnd.apple.mpegurl",
+                        headers={"Content-Disposition": f"filename=playlist.m3u8"}
                     )
             except Exception as core_err:
                 # If not found in either location
@@ -184,25 +172,11 @@ async def get_segment(video_id: str, segment_file: str):
                     
                     # Retrieve object from core storage
                     response = minio_client_core.get_object(core_bucket_name, object_name)
-                    
-                    data = response.read()
-                    data_size = len(data)
-                    
-                    # Upload to local cache
-                    minio_client.put_object(
-                        bucket_name, 
-                        object_name, 
-                        io.BytesIO(data), 
-                        length=data_size
-                    )
-
-                    # Reset the stream for response
-                    response_stream = io.BytesIO(data)
-
                     # Return StreamingResponse
                     return StreamingResponse(
-                        response_stream,
-                        media_type="application/octet-stream"  # Adjust media type as needed
+                        response.stream(),
+                        media_type="video/MP2T",
+                        headers={"Content-Disposition": f"filename={segment_file}"}
                     )
             except Exception as core_err:
                 print(f"Detailed error: {core_err}")
