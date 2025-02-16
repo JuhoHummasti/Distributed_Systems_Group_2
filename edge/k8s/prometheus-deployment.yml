@@ -43,7 +43,8 @@ spec:
     - protocol: TCP
       port: 9091
       targetPort: 9091
-  type: ClusterIP
+      nodePort: 30090
+  type: NodePort
 
 ---
 apiVersion: v1
@@ -83,7 +84,7 @@ data:
         metrics_path: /metrics
         scrape_interval: 5s
         static_configs:
-          - targets: ["cache-controller:5001"]
+          - targets: ["cache-controller:5032"]
         relabel_configs:
           - source_labels: [__address__]
             target_label: instance
@@ -95,7 +96,7 @@ data:
       # Redis Metrics
       - job_name: redis
         static_configs:
-          - targets: ["redis-exporter:9121"]
+          - targets: ["redis:6379"]
         metrics_path: /metrics
         scrape_interval: 5s
         relabel_configs:
@@ -111,7 +112,7 @@ data:
         metrics_path: /metrics
         scrape_interval: 5s
         static_configs:
-          - targets: ["streaming-controller:8000"]
+          - targets: ["streaming-controller:8054"]
         relabel_configs:
           - source_labels: [__address__]
             target_label: instance

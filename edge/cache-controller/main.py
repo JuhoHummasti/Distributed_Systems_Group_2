@@ -159,33 +159,43 @@ async def process_cache_miss(redis_client: redis.Redis, message: Dict):
         logger.error(f"Error processing cache miss: {e}")
         CACHE_OPS.labels('error').inc()
 
-async def redis_subscriber():
-    redis_client = redis.Redis(
-        host=settings.redis_host,
-        port=settings.redis_port,
-        decode_responses=True
-    )
-    
-    pubsub = redis_client.pubsub()
-    pubsub.subscribe(settings.redis_channel)
-    
-    try:
-        for message in pubsub.listen():
-            if message['type'] == 'message':
-                try:
-                    data = json.loads(message['data'])
-                    await process_cache_miss(redis_client, data)
-                except json.JSONDecodeError:
-                    logger.error(f"Invalid JSON in message: {message['data']}")
-                except Exception as e:
-                    logger.error(f"Error processing message: {e}")
-    finally:
-        pubsub.unsubscribe()
-        redis_client.close()
+async def redis_subscriber(app_state: Dict):
+    while app_state['running']:
+        try:
+            redis_client = redis.Redis(
+                host=settings.redis_host,
+                port=settings.redis_port,
+                decode_responses=True
+            )
+            pubsub = redis_client.pubsub()
+            pubsub.subscribe(settings.redis_channel)
+            
+            while app_state['running']:
+                message = pubsub.get_message(timeout=1.0)
+                if message and message['type'] == 'message':
+                    try:
+                        data = json.loads(message['data'])
+                        await process_cache_miss(redis_client, data)
+                    except json.JSONDecodeError:
+                        logger.error(f"Invalid JSON in message: {message['data']}")
+                    except Exception as e:
+                        logger.error(f"Error processing message: {e}")
+                await asyncio.sleep(0.1)  # Prevent CPU spinning
+                
+        except Exception as e:
+            logger.error(f"Redis subscriber error: {e}")
+            await asyncio.sleep(5)  # Wait before reconnecting
+        finally:
+            try:
+                pubsub.unsubscribe()
+                redis_client.close()
+            except:
+                pass
 
 @app.on_event("startup")
 async def startup_event():
     try:
+        # Test Redis connection
         redis_client = redis.Redis(
             host=settings.redis_host,
             port=settings.redis_port,
@@ -194,10 +204,25 @@ async def startup_event():
         redis_client.ping()
         redis_client.close()
         
-        asyncio.create_task(redis_subscriber())
+        # Start redis subscriber as a background task
+        app.state.subscriber_task = asyncio.create_task(
+            redis_subscriber({'running': True})
+        )
     except Exception as e:
         logger.error(f"Error during startup: {e}")
         raise
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    logger.info("Shutting down application...")
+    app.state.running = False
+    if hasattr(app.state, 'subscriber_task'):
+        try:
+            app.state.subscriber_task.cancel()
+            await app.state.subscriber_task
+        except asyncio.CancelledError:
+            pass
+    logger.info("Application shutdown complete")
 
 @app.get("/stats")
 async def get_cache_stats():
