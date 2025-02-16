@@ -2,6 +2,8 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: cache-controller
+  labels:
+    app: cache-controller
 spec:
   replicas: 1
   selector:
@@ -15,11 +17,34 @@ spec:
       containers:
         - name: cache-controller
           image: hasaan12/ds-cache-controller:latest
+          imagePullPolicy: Always
           ports:
-            - containerPort: 5001
+            - containerPort: 5032
           env:
-            - name: PYTHONUNBUFFERED
-              value: "1"
+            - name: PORT
+              value: "5032"
+            - name: MINIO_CACHE_HOST
+              value: "minio"
+            - name: MINIO_CACHE_PORT
+              value: "9000"
+            - name: MINIO_CORE_HOST
+              value: "195.148.22.181"
+            - name: MINIO_CORE_PORT
+              value: "30900"
+            - name: MINIO_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: minio-credentials
+                  key: root-user
+            - name: MINIO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: minio-credentials
+                  key: root-password
+            - name: CACHE_BUCKET
+              value: "cache"
+            - name: CORE_BUCKET
+              value: "videos"
           resources:
             requests:
               memory: "256Mi"
@@ -32,12 +57,15 @@ apiVersion: v1
 kind: Service
 metadata:
   name: cache-controller
+  labels:
+    app: cache-controller
 spec:
   selector:
     app: cache-controller
   ports:
-    - port: 5001
-      targetPort: 5001
+    - port: 5032
+      targetPort: 5032
+  type: ClusterIP
 ---
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
@@ -54,6 +82,12 @@ spec:
     - type: Resource
       resource:
         name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 80
+    - type: Resource
+      resource:
+        name: memory
         target:
           type: Utilization
           averageUtilization: 80
