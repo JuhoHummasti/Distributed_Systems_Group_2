@@ -17,6 +17,20 @@ spec:
                 name: request-controller
                 port:
                   number: 8080
+          - path: /upload(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: video-uploader
+                port:
+                  number: 8000
+          - path: /grafana(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: grafana
+                port:
+                  number: 3000
           - path: /minio(/|$)(.*)
             pathType: ImplementationSpecific
             backend:
