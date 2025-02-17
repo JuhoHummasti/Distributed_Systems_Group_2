@@ -53,30 +53,30 @@ sh core/update_k8s_pods.sh
    - Install minikube
 
 2. Start Minikube
-   ```bash
-   minikube start
-   ```
+```bash
+minikube start
+```
 
 3. Enable Ingress Addon
-   ```bash
-   minikube addons enable ingress
-   ```
+```bash
+minikube addons enable ingress
+```
 
 4. Deploy Kubernetes Resources
-   ```bash
-   kubectl apply -f k8s/
-   ```
+```bash
+kubectl apply -f k8s/
+```
 
 5. To Clear and Redeploy (if needed)
-   ```bash
-   # Delete all resources in k8s directory
-   kubectl delete -f k8s/
-   
-   # Wait for resources to be fully deleted
-   
-   # Reapply the configuration
-   kubectl apply -f k8s/
-   ```
+```bash
+# Delete all resources in k8s directory
+kubectl delete -f k8s/
+
+# Wait for resources to be fully deleted
+
+# Reapply the configuration
+kubectl apply -f k8s/
+```
 
 6. Open tunnel
 ```bash
