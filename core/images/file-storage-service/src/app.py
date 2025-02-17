@@ -37,13 +37,13 @@ REQUEST_LATENCY = Histogram('file_storage_service_request_latency_seconds', 'Req
 class FileStorageService(file_storage_service_pb2_grpc.FileStorageServiceServicer):
     def __init__(self):
         logger.info("Initializing FileStorageService with configuration: %s", {
-            'MINIO_ENDPOINT': os.getenv("MINIO_ENDPOINT", "nginx:7010"),
+            'MINIO_ENDPOINT': os.getenv("MINIO_ENDPOINT", ""),
             'BUCKET_NAME': "videos",
             'SECURE': False
         })
         
         self.minio_client = Minio(
-            os.getenv("MINIO_ENDPOINT", "nginx:7010"),
+            os.getenv("MINIO_ENDPOINT", ""),
             access_key=os.getenv("MINIO_ROOT_USER", "myaccesskey"),
             secret_key=os.getenv("MINIO_ROOT_PASSWORD", "mysecretkey"),
             secure=False
@@ -66,7 +66,6 @@ class FileStorageService(file_storage_service_pb2_grpc.FileStorageServiceService
         try:
             video_id = request.video_id
             url = self.minio_client.presigned_get_object(self.bucket_name, video_id)
-            url = self.replace_hostname(url)
             SUCCESS_COUNT.inc()
             logger.info("Generated download URL for video_id: %s", video_id)
             return file_storage_service_pb2.VideoDownloadUrlResponse(download_url=url)
