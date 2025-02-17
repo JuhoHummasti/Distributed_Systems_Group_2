@@ -42,6 +42,8 @@ if os.getenv("ENABLE_PROFILER") == "1":
 # Add Prometheus instrumentation
 Instrumentator().instrument(app).expose(app)
 
+DATABASE_SERVICE_URL = os.getenv("DATABASE_SERVICE_URL", "http://database-service:8011")
+
 # Minio configuration using environment variables
 minio_client = Minio(
     os.getenv("MINIO_ENDPOINT", "minio:9000"),
@@ -131,7 +133,7 @@ async def upload_video(file: UploadFile, background_tasks: BackgroundTasks):
         # Store video ID in database service
         async with httpx.AsyncClient() as client:
             response = await client.post(
-                "http://database-service:8011/api/v1/items/",
+                DATABASE_SERVICE_URL + "/api/v1/items/",
                 json=item_data
             )
             if response.status_code != 201:
@@ -154,6 +156,7 @@ async def upload_video(file: UploadFile, background_tasks: BackgroundTasks):
             os.unlink(temp_path)
         raise HTTPException(status_code=500, detail=str(e))
 
+# TODO: remove this endpoint ?
 @app.get("/video/{video_id}")
 async def get_video(video_id: str):
     try:
@@ -187,6 +190,7 @@ async def get_video_status(video_id: str):
     status = await video_processor.get_processing_status(video_id)
     return {"video_id": video_id, "status": status}
 
+# TODO: remove this endpoint ?
 @app.get("/videos/", response_model=List[VideoMetadata])
 async def list_videos():
     try:
@@ -218,7 +222,17 @@ async def list_videos():
 async def delete_video(video_id: str):
     try:
         logger.debug("Received delete request for video ID: %s", video_id)
+        
+        # Delete from MinIO
         minio_client.remove_object(BUCKET_NAME, video_id)
+        
+        # Delete from database service
+        async with httpx.AsyncClient() as client:
+            response = await client.delete(
+                DATABASE_SERVICE_URL + f"/api/v1/items/{video_id}"
+            )
+            if response.status_code != 200:
+                raise HTTPException(status_code=500, detail="Failed to delete video metadata")
         
         message = {
             "event": "delete",

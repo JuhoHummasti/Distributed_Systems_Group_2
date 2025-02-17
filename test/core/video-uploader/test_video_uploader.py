@@ -29,7 +29,7 @@ def port_forwarder():
     forwarder = PortForwarder()
     # Add all required services
     forwarder.start_port_forward("video-uploader", 8000, 8000)
-    #forwarder.start_port_forward("database-service", 8011, 8011)
+    forwarder.start_port_forward("database-service", 8011, 8011)
     #forwarder.start_port_forward("file-storage-service", 50051, 50051)
     #forwarder.start_port_forward("minio", 9000, 9000)
     
@@ -155,4 +155,13 @@ def test_delete_video(temp_dir):
     
     assert response.status_code == 200
     assert response.json()['message'] == "Video deleted successfully"
-    logging.debug("Delete video test passed")
+    
+    # Verify video is deleted from MinIO
+    minio_response = requests.get(f"{API_URL}/video/{video_id}")
+    assert minio_response.status_code == 404, "Video still exists in MinIO storage"
+    
+    # Verify video is deleted from MongoDB
+    db_response = requests.get(f"http://localhost:8011/api/v1/items/{video_id}")
+    assert db_response.status_code == 404, "Video metadata still exists in MongoDB"
+    
+    logging.debug("Delete video test passed - verified deletion from MinIO and MongoDB")
