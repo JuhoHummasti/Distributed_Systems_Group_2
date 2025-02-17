@@ -18,3 +18,4 @@ starlette==0.41.3
 typing_extensions==4.12.2
 urllib3==2.3.0
 uvicorn==0.34.0
+prometheus_fastapi_instrumentator==7.0.2
