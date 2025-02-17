@@ -1,4 +1,6 @@
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import StreamingResponse
+import requests
 from fastapi.middleware.cors import CORSMiddleware
 from prometheus_fastapi_instrumentator import Instrumentator
 import grpc
@@ -83,6 +85,18 @@ async def get_video(video_id: str):
                 raise HTTPException(status_code=404, detail="Video not found")
             raise HTTPException(status_code=503, detail="Database service unavailable")
 
+@app.get("/serve")
+async def serve_minio_file(url: str):
+    try:
+        response = requests.get(url, stream=True)
+        response.raise_for_status()
+        return StreamingResponse(
+            response.iter_content(chunk_size=8192), 
+            media_type=response.headers.get('Content-Type', 'application/octet-stream')
+        )
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=f"File not found: {str(e)}")
+    
 @app.get("/health")
 async def health_check():
     return {"status": "healthy"}
