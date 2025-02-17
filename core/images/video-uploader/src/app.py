@@ -17,6 +17,7 @@ from pydantic import BaseModel
 from datetime import datetime, timezone
 from profiler_middleware import ProfilerMiddleware
 from process_video import VideoProcessor
+from io import BytesIO
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -231,6 +232,32 @@ async def delete_video(video_id: str):
     except Exception as e:
         logger.error("Error deleting video: %s", e)
         raise HTTPException(status_code=404, detail=str(e))
+    
+@app.get("/thumbnails/{video_id}")
+async def get_video_thumbnail(video_id: str):
+    """
+    Retrieve a video thumbnail from MinIO bucket and stream directly
+    
+    :param video_id: Unique identifier for the video
+    :return: StreamingResponse with the thumbnail image
+    """
+    bucket_name = "videos"  # Replace with your actual bucket name
+    thumbnail_path = f"thumbnails/{video_id}.jpg"
+    
+    try:
+        thumbnail_data = minio_client.get_object(bucket_name, thumbnail_path)
+        image_stream = BytesIO(thumbnail_data.read())
+        thumbnail_data.close()
+        
+        return StreamingResponse(
+            iter([image_stream.getvalue()]), 
+            media_type="image/jpeg"
+        )
+    
+    except Exception as e:
+        # Handle cases where the thumbnail doesn't exist or other errors
+        raise HTTPException(status_code=404, detail=f"Thumbnail for video {video_id} not found: {str(e)}")
+
 
 if __name__ == "__main__":
     logger.info("Starting video uploader service")
