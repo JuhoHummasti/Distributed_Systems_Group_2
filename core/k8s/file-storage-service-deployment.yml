@@ -36,7 +36,7 @@ spec:
                   name: minio-secret
                   key: MINIO_ROOT_PASSWORD
             - name: MINIO_ENDPOINT
-              value: "http://195.148.22.181/"
+              value: "195.148.22.181"
 ---
 apiVersion: v1
 kind: Service
