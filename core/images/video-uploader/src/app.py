@@ -224,28 +224,47 @@ async def delete_video(video_id: str):
         logger.debug("Received delete request for video ID: %s", video_id)
         
         # Delete from MinIO
-        minio_client.remove_object(BUCKET_NAME, video_id)
-        
+        try:
+            minio_client.remove_object(BUCKET_NAME, video_id)
+        except S3Error as minio_error:
+            if minio_error.code == 'NoSuchKey':
+                raise HTTPException(status_code=404, detail="Video file not found")
+            raise HTTPException(status_code=500, detail=f"MinIO error: {str(minio_error)}")
+            
         # Delete from database service
-        async with httpx.AsyncClient() as client:
-            response = await client.delete(
-                DATABASE_SERVICE_URL + f"/api/v1/items/{video_id}"
+        try:
+            response = httpx.delete(
+                DATABASE_SERVICE_URL + f"/api/v1/videos/{video_id}"
             )
-            if response.status_code != 200:
-                raise HTTPException(status_code=500, detail="Failed to delete video metadata")
+            if response.status_code == 404:
+                raise HTTPException(status_code=404, detail="Video metadata not found")
+            elif response.status_code != 200:
+                raise HTTPException(status_code=response.status_code, 
+                                 detail=f"Database service error: {response.text}")
+        except httpx.RequestError as req_error:
+            raise HTTPException(status_code=503, 
+                             detail=f"Database service unavailable: {str(req_error)}")
         
-        message = {
-            "event": "delete",
-            "video_id": video_id,
-            "timestamp": datetime.now(timezone.utc).isoformat()
-        }
-        send_kafka_message("video-deletes", message)
-        
+        # Send Kafka message
+        try:
+            message = {
+                "event": "delete",
+                "video_id": video_id,
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            }
+            send_kafka_message("video-deletes", message)
+        except Exception as kafka_error:
+            logger.error("Failed to send Kafka message: %s", kafka_error)
+            # Continue execution as this is non-critical
+            
         logger.debug("Deleted video ID: %s", video_id)
         return {"message": "Video deleted successfully"}
+        
+    except HTTPException:
+        raise  # Re-raise HTTP exceptions as-is
     except Exception as e:
-        logger.error("Error deleting video: %s", e)
-        raise HTTPException(status_code=404, detail=str(e))
+        logger.error("Unexpected error deleting video: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
     
 @app.get("/thumbnails/{video_id}")
 async def get_video_thumbnail(video_id: str):

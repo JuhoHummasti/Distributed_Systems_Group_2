@@ -70,6 +70,26 @@ async def get_items_by_collection(
         # Handle potential errors (e.g., collection not found, invalid filter)
         raise HTTPException(status_code=400, detail=str(e))
 
+@router.get("/videos/{video_id}")
+async def get_item_by_video_id(video_id: str):
+    """
+    Retrieve an item by its video_id field
+    """
+    item = await collection.find_one({"video_id": video_id})
+    if not item:
+        raise HTTPException(status_code=404, detail="Video not found")
+    return item_helper(item)
+
+@router.delete("/videos/{video_id}")
+async def delete_item_by_video_id(video_id: str):
+    """
+    Delete an item by its video_id field
+    """
+    result = await collection.delete_one({"video_id": video_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Video not found")
+    return {"message": "Video deleted successfully"}
+
 # Read an item by ID
 @router.get("/items/{item_id}")
 async def get_item(item_id: str):

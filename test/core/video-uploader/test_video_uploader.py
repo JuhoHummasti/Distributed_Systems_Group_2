@@ -18,6 +18,7 @@ if test_dir not in sys.path:
     sys.path.append(test_dir)
 
 from utils.port_forward import PortForwarder
+import utils.video_generator
 
 API_URL = "http://localhost:8000"
 CHUNK_SIZE = 1024 * 1024  # 1MB chunks
@@ -43,16 +44,6 @@ def temp_dir():
     yield temp_dir
     temp_dir.cleanup()
 
-def _generate_large_file(filepath, size_in_gb):
-    with open(filepath, 'wb') as f:
-        for _ in range(size_in_gb * 1024):  # Write in 1MB chunks
-            f.write(os.urandom(CHUNK_SIZE))
-
-def _generate_small_file(filepath, size_in_mb):
-    with open(filepath, 'wb') as f:
-        for _ in range(size_in_mb):  # Write in 1MB chunks
-            f.write(os.urandom(CHUNK_SIZE))
-
 def create_callback(pbar):
     def callback(monitor):
         pbar.update(monitor.bytes_read - pbar.n)
@@ -71,7 +62,7 @@ def test_upload_download(temp_dir):
     
     video_path = os.path.join(temp_dir.name, 'test_video.mp4')
     downloaded_file = os.path.join(temp_dir.name, 'downloaded_video.mp4')
-    _generate_large_file(video_path, 1)
+    utils.video_generator.generate_test_video(video_path, 90)
     
     # Upload video
     logging.debug(f"\nUploading video from {video_path}...")
@@ -79,7 +70,7 @@ def test_upload_download(temp_dir):
     
     with open(video_path, 'rb') as f:
         encoder = MultipartEncoder({
-            'file': ('video.mp4', f, 'video/mp4')
+            'file': ('test_video.mp4', f, 'video/mp4')
         })
         
         with tqdm(total=total_size, desc="Uploading", unit='B', unit_scale=True) as pbar:
@@ -122,19 +113,29 @@ def test_upload_download(temp_dir):
     assert response.status_code == 200
     assert response.json()['message'] == "Video deleted successfully"
     logging.debug("Video deleted successfully after test.")
+    
+def test_delete_nonexistent_video():
+    logging.debug("\n=== Starting Delete Nonexistent Video Test ===")
+    
+    # Test deleting a nonexistent video
+    response = requests.delete(f"{API_URL}/video/12345abscdefg")
+    assert response.status_code == 404
+    assert "Video metadata not found" in response.text
+    
+    logging.debug("Delete nonexistent video test passed")
 
 def test_delete_video(temp_dir):
     logging.debug("=== Starting Delete Video Test ===")
     
     # Generate a small file for testing
-    small_video_path = os.path.join(temp_dir.name, 'small_test_video.mp4')
-    _generate_small_file(small_video_path, size_in_mb=1)
+    video_path = os.path.join(temp_dir.name, 'test_video.mp4')
+    utils.video_generator.generate_test_video(video_path, 90)
     
     # Upload the small video for testing
     start_time = time.time()
-    with open(small_video_path, 'rb') as f:
+    with open(video_path, 'rb') as f:
         encoder = MultipartEncoder({
-            'file': ('small_test_video.mp4', f, 'video/mp4')
+            'file': ('test_video.mp4', f, 'video/mp4')
         })
         response = requests.post(
             f"{API_URL}/upload/",
@@ -161,7 +162,7 @@ def test_delete_video(temp_dir):
     assert minio_response.status_code == 404, "Video still exists in MinIO storage"
     
     # Verify video is deleted from MongoDB
-    db_response = requests.get(f"http://localhost:8011/api/v1/items/{video_id}")
-    assert db_response.status_code == 404, "Video metadata still exists in MongoDB"
+    db_response = requests.get(f"http://localhost:8011/api/v1/videos/{video_id}")
+    assert db_response.status_code == 404, f"Video metadata still exists in MongoDB for video_id {video_id}"
     
     logging.debug("Delete video test passed - verified deletion from MinIO and MongoDB")
