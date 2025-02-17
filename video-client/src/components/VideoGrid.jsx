@@ -69,7 +69,7 @@ const VideoGrid = () => {
           >
             <div className="relative pt-[56.25%]">
               <img
-                src={video.thumbnail_url}
+                src={`${import.meta.env.VITE_THUMBNAIL_HOST}/${video.video_id}`}
                 alt={video.title}
                 className="absolute top-0 left-0 w-full h-full object-cover"
               />
