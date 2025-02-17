@@ -38,7 +38,3 @@ def generate_test_video(output_path, frame_count, frame_size=(640, 480), fps=30)
     except Exception as e:
         print(f"Error generating video: {str(e)}")
         return False
-
-# Example usage:
-#generate_test_video("test_video.mp4", frame_count=90, frame_size=(1280, 720))
-generate_test_video("test_video.mp4", "frame_count=")
