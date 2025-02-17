@@ -86,7 +86,6 @@ class FileStorageService(file_storage_service_pb2_grpc.FileStorageServiceService
             for video_id in request.video_ids:
                 try:
                     url = self.minio_client.presigned_get_object(self.bucket_name, video_id)
-                    url = self.replace_hostname(url)
                     urls[video_id] = url
                     logger.debug("Generated URL for video_id: %s", video_id)
                 except Exception as e:
