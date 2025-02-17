@@ -15,6 +15,7 @@ from wsgiref.util import setup_testing_defaults
 from wsgiref.simple_server import make_server
 
 from threading import Thread
+from urllib.parse import urlparse, urlunparse
 
 # Enhanced logging configuration
 logging.basicConfig(
@@ -85,7 +86,16 @@ class FileStorageService(file_storage_service_pb2_grpc.FileStorageServiceService
             for video_id in request.video_ids:
                 try:
                     url = self.minio_client.presigned_get_object(self.bucket_name, video_id)
-                    urls[video_id] = url
+    
+                    # Parse the original URL
+                    parsed_url = urlparse(url)
+                    
+                    # Construct a new URL with the /minio path
+                    new_url = urlunparse(parsed_url._replace(
+                        netloc=f"{parsed_url.netloc}/minio"
+                    ))
+
+                    urls[video_id] = new_url
                     logger.debug("Generated URL for video_id: %s", video_id)
                 except Exception as e:
                     logger.error("Error generating URL for video_id %s: %s", video_id, str(e))
