@@ -8,6 +8,24 @@ spec:
   resources:
     requests:
       storage: 10Gi
+  selector:
+    matchLabels:
+      type: hls-storage
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: hls-pv
+  labels:
+    type: hls-storage
+spec:
+  capacity:
+    storage: 10Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  hostPath:
+    path: /mnt/data/hls
 ---
 apiVersion: apps/v1
 kind: Deployment
