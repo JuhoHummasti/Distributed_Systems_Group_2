@@ -5,10 +5,14 @@ import tempfile
 import subprocess
 from minio import Minio
 import os
-import shutil
 from typing import Tuple
+from datetime import datetime
+import httpx
+from fastapi import HTTPException
 
 logger = logging.getLogger(__name__)
+
+DATABASE_SERVICE_URL = os.getenv("DATABASE_SERVICE_URL", "http://database-service:8011")
 
 class VideoProcessor:
     def __init__(self):
@@ -58,7 +62,7 @@ class VideoProcessor:
             logger.error(f"Error generating thumbnail: {str(e)}")
             return False
         
-    def _cpu_intensive_processing(self, video_id: str, source_path: str) -> Tuple[bool, str]:
+    async def _cpu_intensive_processing(self, video_id: str, source_path: str) -> Tuple[bool, str]:
         """
         Process video in a separate process to create HLS chunks
         Returns: Tuple[success: bool, error_message: str]
@@ -177,7 +181,19 @@ class VideoProcessor:
                 if failed_uploads:
                     raise Exception(f"Failed to upload {len(failed_uploads)} files: {failed_uploads}")
 
-                logger.info(f"Successfully processed video {video_id}")
+                update_data = {
+                    "status": "processed",
+                    "time_updated": datetime.utcnow().isoformat()
+                }
+
+                async with httpx.AsyncClient() as client:
+                    response = await client.put(
+                        f"{DATABASE_SERVICE_URL}/api/v1/items/{video_id}",
+                        json=update_data
+                    )
+                    if response.status_code != 200:
+                        raise HTTPException(status_code=500, detail="Failed to update video status")
+                    
                 return True, ""
 
         except Exception as e:
