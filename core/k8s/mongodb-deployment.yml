@@ -12,8 +12,6 @@ spec:
       labels:
         app: mongodb
     spec:
-      securityContext:
-        fsGroup: 999
       containers:
         - name: mongodb
           image: mongo
@@ -23,8 +21,6 @@ spec:
           volumeMounts:
             - name: mongodb-data
               mountPath: /data/db
-          securityContext:
-            runAsUser: 999
       volumes:
         - name: mongodb-data
           persistentVolumeClaim:
@@ -64,6 +60,7 @@ metadata:
   labels:
     type: mongodb-storage
 spec:
+  storageClassName: longhorn
   capacity:
     storage: 10Gi
   accessModes:
