@@ -272,6 +272,7 @@ async def predict_cache_candidates(access_patterns: List[Dict]) -> List[str]:
         with AI_PREDICTION_DURATION.time():
             async with grpc.aio.insecure_channel('grpc-openai-service:50051') as channel:
                 stub = OpenAIServiceStub(channel)
+
                 request_data = {
                     "access_patterns": access_patterns,
                     "timestamp": datetime.now().isoformat(),
@@ -285,6 +286,9 @@ async def predict_cache_candidates(access_patterns: List[Dict]) -> List[str]:
                     """
                 }
                 
+
+                logger.info(f"AI Request data: {request_data}")
+
                 request = AIRequest(json_data=json.dumps(request_data))
                 response = await stub.ProcessRequest(request)
                 result = json.loads(response.json_response)
