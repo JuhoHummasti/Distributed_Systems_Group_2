@@ -10,7 +10,7 @@ class Item(BaseModel):
     time_updated: Optional[datetime] = None
 
 class UpdateItem(BaseModel):
-    video_id: str
-    status: str
-    title: str
+    video_id: Optional[str]
+    status: Optional[str]
+    title: Optional[str]
     time_updated: Optional[datetime] = None
