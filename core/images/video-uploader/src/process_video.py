@@ -191,6 +191,11 @@ class VideoProcessor:
                     f"{DATABASE_SERVICE_URL}/api/v1/items/{video_id}",
                     json=update_data
                 )
+
+
+                # Log the full response for debugging
+                logger.info(f"Update response status: {response.status_code}")
+                logger.info(f"Update response content: {response.text}")
                 if response.status_code != 200:
                     raise HTTPException(status_code=500, detail="Failed to update video status")
                     
