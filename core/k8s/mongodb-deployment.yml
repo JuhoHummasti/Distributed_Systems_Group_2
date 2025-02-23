@@ -12,15 +12,6 @@ spec:
       labels:
         app: mongodb
     spec:
-      initContainers:
-        - name: init-mongodb
-          image: busybox
-          command: ["sh", "-c", "chown -R 999:999 /data/db"]
-          securityContext:
-            runAsUser: 0
-          volumeMounts:
-            - name: mongodb-data
-              mountPath: /data/db
       containers:
         - name: mongodb
           image: mongo
