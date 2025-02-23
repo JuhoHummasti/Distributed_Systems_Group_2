@@ -62,7 +62,7 @@ async def get_all_videos():
             video_ids = [video["video_id"] for video in videos]
             
             # Get thumbnail URLs
-            thumbnail_urls = await get_thumbnail_urls(video_ids)
+            # thumbnail_urls = await get_thumbnail_urls(video_ids)
             
             # Add thumbnail URLs to video data
             for video in videos:
