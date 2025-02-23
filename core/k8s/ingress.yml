@@ -47,3 +47,10 @@ spec:
                 name: minio
                 port:
                   number: 9001
+          - path: /mongodb(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: mongodb
+                port:
+                  number: 27017
