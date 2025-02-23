@@ -1,14 +1,4 @@
 apiVersion: v1
-kind: Secret
-metadata:
-  name: openai-secret
-type: Opaque
-data:
-  # Replace with your base64 encoded API key: echo -n "your-api-key" | base64
-  OPENAI_API_KEY: c2stcHJvai1EenMyWE9kS3pkVFlTNEx5dmZRaWhralM1UUo0TUNITGRiYzgxSVdwcmhwVl9rMWxLT3J3SFlVWHZVeE9oVkVScktiS2w5OC1SVVQzQmxia0ZKLVktVW83NlVKUC04cWZRMS0yTlNXbWtYeWlZenlLRzJiZlZBNl9LTEtYUXZUejZBVXFuYU5WajVBN1ZmQ29tZjZ0OWpwbXZjb0E=
-
----
-apiVersion: v1
 kind: Service
 metadata:
   name: grpc-openai-service

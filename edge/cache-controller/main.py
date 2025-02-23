@@ -288,6 +288,8 @@ async def predict_cache_candidates(access_patterns: List[Dict]) -> List[str]:
                 request = AIRequest(json_data=json.dumps(request_data))
                 response = await stub.ProcessRequest(request)
                 result = json.loads(response.json_response)
+
+                logger.info(f"AI prediction result: {result}")
                 
                 AI_PREDICTED_FILES.inc(len(result.get("recommended_files", [])))
                 return result.get("recommended_files", [])
