@@ -307,11 +307,11 @@ async def cache_predicted_files(file_paths: List[str]):
     for file_path in file_paths:
         try:
             # Extract video_id and file_name from file_path
-            # Expected format: "hls/video_id/file_name"
+            # Expected format: "video_id/file_name"
             parts = file_path.split("/")
-            if len(parts) >= 3:
-                video_id = parts[1]
-                file_name = parts[2]
+            if len(parts) >= 2:
+                video_id = parts[0]
+                file_name = parts[1]
                 await cache_file(video_id, file_name)
             else:
                 logger.error(f"Invalid file path format: {file_path}")
