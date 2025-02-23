@@ -186,13 +186,13 @@ class VideoProcessor:
                     "time_updated": datetime.utcnow().isoformat()
                 }
 
-                with httpx.AsyncClient() as client:
-                    response = client.put(
-                        f"{DATABASE_SERVICE_URL}/api/v1/items/{video_id}",
-                        json=update_data
-                    )
-                    if response.status_code != 200:
-                        raise HTTPException(status_code=500, detail="Failed to update video status")
+                client = httpx.AsyncClient()
+                response = client.put(
+                    f"{DATABASE_SERVICE_URL}/api/v1/items/{video_id}",
+                    json=update_data
+                )
+                if response.status_code != 200:
+                    raise HTTPException(status_code=500, detail="Failed to update video status")
                     
                 return True, ""
 
@@ -200,6 +200,10 @@ class VideoProcessor:
             error_msg = f"Error processing video {video_id}: {str(e)}"
             logger.error(error_msg)
             return False, error_msg
+        finally:
+            # Close the client if it was opened
+            if 'client' in locals():
+                client.close()
         
     def verify_minio_upload(self, bucket_name: str, object_name: str, source_path: str) -> bool:
         try:
