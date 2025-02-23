@@ -24,8 +24,6 @@ spec:
       labels:
         app: mongodb
     spec:
-      nodeSelector:
-        kubernetes.io/hostname: node-worker-3
       containers:
         - name: mongodb
           image: mongo
