@@ -30,8 +30,9 @@ const VideoGrid = () => {
     fetchVideos();
   }, []);
 
-  const handleVideoClick = (videoId) => {
-    navigate(`/video/${videoId}`);
+  const handleVideoClick = (video) => {
+    if (video.processing) return;
+    navigate(`/video/${video.video_id}`);
   };
 
   if (loading) {
@@ -64,8 +65,12 @@ const VideoGrid = () => {
         {videos.map((video) => (
           <div
             key={video.video_id}
-            className="flex flex-col bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300 cursor-pointer"
-            onClick={() => handleVideoClick(video.video_id)}
+            className={`flex flex-col bg-white rounded-lg shadow-lg overflow-hidden ${
+              !video.processing
+                ? "hover:shadow-xl transition-shadow duration-300 cursor-pointer"
+                : "cursor-not-allowed opacity-75"
+            }`}
+            onClick={() => handleVideoClick(video)}
           >
             <div className="relative pt-[56.25%]">
               <img
@@ -73,6 +78,14 @@ const VideoGrid = () => {
                 alt={video.title}
                 className="absolute top-0 left-0 w-full h-full object-cover"
               />
+              {video.processing && (
+                <div className="absolute top-2 right-2 flex items-center bg-white rounded-full px-2 py-1 shadow">
+                  <div className="w-2 h-2 rounded-full bg-orange-500 mr-2"></div>
+                  <span className="text-xs font-medium text-gray-700">
+                    Processing
+                  </span>
+                </div>
+              )}
             </div>
             <div className="p-4">
               <h3 className="text-sm font-medium text-gray-900 line-clamp-2">
