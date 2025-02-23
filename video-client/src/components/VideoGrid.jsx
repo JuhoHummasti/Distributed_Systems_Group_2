@@ -31,7 +31,7 @@ const VideoGrid = () => {
   }, []);
 
   const handleVideoClick = (video) => {
-    if (video.processing) return;
+    if (video.status == "processing") return;
     navigate(`/video/${video.video_id}`);
   };
 
@@ -78,7 +78,7 @@ const VideoGrid = () => {
                 alt={video.title}
                 className="absolute top-0 left-0 w-full h-full object-cover"
               />
-              {video.processing && (
+              {video.status == "processing" && (
                 <div className="absolute top-2 right-2 flex items-center bg-white rounded-full px-2 py-1 shadow">
                   <div className="w-2 h-2 rounded-full bg-orange-500 mr-2"></div>
                   <span className="text-xs font-medium text-gray-700">
