@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package openai;
+
+service OpenAIService {
+    rpc ProcessRequest (AIRequest) returns (AIResponse) {}
+}
+
+message AIRequest {
+    string json_data = 1;
+}
+
+message AIResponse {
+    string json_response = 1;
+}

@@ -10,6 +10,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
 COPY main.py .
+COPY ai_service_pb2_grpc.py .
+COPY ai_service_pb2.py .
 
 # Expose port
 EXPOSE 5032

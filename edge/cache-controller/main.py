@@ -1,12 +1,16 @@
-from fastapi import FastAPI, Response
+from fastapi import FastAPI, Response, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import redis
 from prometheus_client import Counter, Histogram, Gauge
 from prometheus_client.exposition import generate_latest
 from prometheus_client import CONTENT_TYPE_LATEST
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 import json
 import asyncio
 from datetime import datetime, timedelta
+import grpc
+from ai_service_pb2 import AIRequest
+from ai_service_pb2_grpc import OpenAIServiceStub
 import logging
 from pydantic import validator
 from pydantic_settings import BaseSettings
@@ -16,6 +20,8 @@ from typing import Dict, List, Tuple
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+scheduler = AsyncIOScheduler()
 
 class Settings(BaseSettings):
     redis_host: str = os.getenv("REDIS_HOST", "redis")
@@ -75,6 +81,19 @@ CACHE_OPS = Counter('cache_operations_total', 'Cache operations', ['operation'])
 CACHE_OP_DURATION = Histogram('cache_operation_duration_seconds', 'Time spent on cache operations', ['operation'])
 PENDING_CACHES = Gauge('pending_caches', 'Number of files currently being cached')
 CACHED_FILES = Gauge('cached_files_total', 'Total number of cached files')
+AI_PREDICTION_DURATION = Histogram(
+    'cache_ai_prediction_duration_seconds',
+    'Time spent on AI prediction operations'
+)
+AI_PREDICTED_FILES = Counter(
+    'cache_ai_predicted_files_total',
+    'Number of files predicted for caching by AI'
+)
+AI_PREDICTION_ERRORS = Counter(
+    'cache_ai_prediction_errors_total',
+    'Number of AI prediction errors'
+)
+
 
 cache_stats = {
     'pending_caches': set(),
@@ -212,9 +231,161 @@ async def startup_event():
         logger.error(f"Error during startup: {e}")
         raise
 
+async def get_access_patterns(redis_client: redis.Redis, hours: int = 24) -> List[Dict]:
+    """Retrieve access patterns from Redis"""
+    access_patterns = []
+    since_time = datetime.now() - timedelta(hours=hours)
+    
+    # Scan for all keys with pattern "hit:*" and "missed:*"
+    for pattern in ["hit:*", "missed:*"]:
+        cursor = 0
+        while True:
+            cursor, keys = redis_client.scan(cursor, match=pattern)
+            for key in keys:
+                try:
+                    data = json.loads(redis_client.get(key))
+                    # Filter timestamps within the time window
+                    recent_timestamps = [
+                        ts for ts in data["timestamps"]
+                        if datetime.fromisoformat(ts) > since_time
+                    ]
+                    if recent_timestamps:
+                        hit_type = "hit" if key.startswith("hit:") else "miss"
+                        file_path = key.split(":", 1)[1]
+                        access_patterns.append({
+                            "file_path": file_path,
+                            "type": hit_type,
+                            "count": len(recent_timestamps),
+                            "timestamps": recent_timestamps
+                        })
+                except (json.JSONDecodeError, KeyError) as e:
+                    logger.error(f"Error processing Redis key {key}: {e}")
+            
+            if cursor == 0:
+                break
+                
+    return access_patterns
+
+async def predict_cache_candidates(access_patterns: List[Dict]) -> List[str]:
+    """Call AI service to predict which files should be cached"""
+    try:
+        with AI_PREDICTION_DURATION.time():
+            async with grpc.aio.insecure_channel('ai-service:50051') as channel:
+                stub = OpenAIServiceStub(channel)
+                request_data = {
+                    "access_patterns": access_patterns,
+                    "timestamp": datetime.now().isoformat(),
+                    "instruction": """
+                    Analyze the access patterns and recommend files for caching based on:
+                    1. High miss to hit ratio
+                    2. Frequent access patterns
+                    3. Recent access trends
+                    4. Time-based patterns
+                    Return a list of file paths that should be cached.
+                    """
+                }
+                
+                request = AIRequest(json_data=json.dumps(request_data))
+                response = await stub.ProcessRequest(request)
+                result = json.loads(response.json_response)
+                
+                AI_PREDICTED_FILES.inc(len(result.get("recommended_files", [])))
+                return result.get("recommended_files", [])
+    except Exception as e:
+        logger.error(f"Error calling AI service: {e}")
+        AI_PREDICTION_ERRORS.inc()
+        return []
+
+async def cache_predicted_files(file_paths: List[str]):
+    """Cache the predicted files from core storage"""
+    for file_path in file_paths:
+        try:
+            # Extract video_id and file_name from file_path
+            # Expected format: "hls/video_id/file_name"
+            parts = file_path.split("/")
+            if len(parts) >= 3:
+                video_id = parts[1]
+                file_name = parts[2]
+                await cache_file(video_id, file_name)
+            else:
+                logger.error(f"Invalid file path format: {file_path}")
+        except Exception as e:
+            logger.error(f"Error caching predicted file {file_path}: {e}")
+            CACHE_OPS.labels('error').inc()
+
+@app.on_event("startup")
+async def start_scheduler():
+    """Start the scheduler for periodic cache prediction"""
+    try:
+        scheduler.add_job(
+            predict_and_cache,
+            'interval',
+            minutes=360,  # Run every 30 minutes
+            id='cache_prediction',
+            replace_existing=True
+        )
+        scheduler.start()
+        logger.info("Cache prediction scheduler started")
+    except Exception as e:
+        logger.error(f"Error starting scheduler: {e}")
+
+async def predict_and_cache():
+    """Periodic task to predict and cache files"""
+    try:
+        redis_client = redis.Redis(
+            host=settings.redis_host,
+            port=settings.redis_port,
+            decode_responses=True
+        )
+        
+        # Get access patterns
+        access_patterns = await get_access_patterns(redis_client)
+        
+        # Get predictions from AI service
+        recommended_files = await predict_cache_candidates(access_patterns)
+        
+        # Cache recommended files
+        await cache_predicted_files(recommended_files)
+        
+    except Exception as e:
+        logger.error(f"Error in predict_and_cache task: {e}")
+    finally:
+        redis_client.close()
+
+@app.post("/predict-cache")
+async def trigger_prediction():
+    """Endpoint to manually trigger cache prediction"""
+    try:
+        await predict_and_cache()
+        return {"status": "success", "message": "Cache prediction triggered"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/cache-predictions")
+async def get_predictions():
+    """Get current cache predictions"""
+    try:
+        redis_client = redis.Redis(
+            host=settings.redis_host,
+            port=settings.redis_port,
+            decode_responses=True
+        )
+        
+        access_patterns = await get_access_patterns(redis_client)
+        recommended_files = await predict_cache_candidates(access_patterns)
+        
+        return {
+            "timestamp": datetime.now().isoformat(),
+            "access_patterns_analyzed": len(access_patterns),
+            "recommended_files": recommended_files
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.on_event("shutdown")
 async def shutdown_event():
     logger.info("Shutting down application...")
+    scheduler.shutdown()
     app.state.running = False
     if hasattr(app.state, 'subscriber_task'):
         try:
