@@ -270,7 +270,7 @@ async def predict_cache_candidates(access_patterns: List[Dict]) -> List[str]:
     """Call AI service to predict which files should be cached"""
     try:
         with AI_PREDICTION_DURATION.time():
-            async with grpc.aio.insecure_channel('ai-service:50051') as channel:
+            async with grpc.aio.insecure_channel('grpc-openai-service:50051') as channel:
                 stub = OpenAIServiceStub(channel)
                 request_data = {
                     "access_patterns": access_patterns,
