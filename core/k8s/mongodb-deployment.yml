@@ -24,8 +24,7 @@ spec:
             - name: mongodb-data
               mountPath: /data/db
           securityContext:
-            runAsUser: 999 # MongoDB's default user ID
-            fsGroup: 999 # MongoDB's default group ID
+            runAsUser: 999
       volumes:
         - name: mongodb-data
           persistentVolumeClaim:
