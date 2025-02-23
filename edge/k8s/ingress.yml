@@ -32,3 +32,10 @@ spec:
                 name: grafana
                 port:
                   number: 3333
+          - path: /cache(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: cache-controller
+                port:
+                  number: 5032
