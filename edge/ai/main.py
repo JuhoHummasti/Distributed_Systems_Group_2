@@ -16,7 +16,7 @@ class OpenAIService(OpenAIServiceServicer):
             input_data = json.loads(request.json_data)
             
             # Construct the prompt using the input data
-            prompt = f"The following data contains file names and how often they are accessed. Based on this data you have to predict which files will be popular in the next few hours and should be cached. Return a json array containing file names and nothing else. Array should be sorted in a way that most important files are in the start and least important are in the end. Intelligently cache files, don't cache everything. Here's the data: {json.dumps(input_data)}"
+            prompt = f"The following data contains file names and how often they are accessed. Based on this data you have to predict which files will be popular in the next few hours and should be cached. Return a json array named cached_files containing file names and nothing else. Array should be sorted in a way that most important files are in the start and least important are in the end. Intelligently cache files, don't cache everything. Here's the data: {json.dumps(input_data)}"
             print("Prompt:", prompt)
 
             # Make the API call to OpenAI

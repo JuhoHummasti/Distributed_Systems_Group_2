@@ -295,8 +295,8 @@ async def predict_cache_candidates(access_patterns: List[Dict]) -> List[str]:
 
                 logger.info(f"AI prediction result: {result}")
                 
-                AI_PREDICTED_FILES.inc(len(result.get("recommended_files", [])))
-                return result.get("recommended_files", [])
+                AI_PREDICTED_FILES.inc(len(result.get("cached_files", [])))
+                return result.get("cached_files", [])
     except Exception as e:
         logger.error(f"Error calling AI service: {e}")
         AI_PREDICTION_ERRORS.inc()
