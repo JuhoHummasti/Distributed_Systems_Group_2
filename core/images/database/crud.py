@@ -104,7 +104,7 @@ async def update_item(item_id: str, item: UpdateItem):
     update_data = {k: v for k, v in item.dict().items() if v is not None}
     if not update_data:
         raise HTTPException(status_code=400, detail="No data provided to update")
-    result = await collection.update_one({"_id": ObjectId(item_id)}, {"$set": update_data})
+    result = await collection.update_one({"video_id": ObjectId(item_id)}, {"$set": update_data})
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Item not found")
     return {"message": "Item updated successfully"}
