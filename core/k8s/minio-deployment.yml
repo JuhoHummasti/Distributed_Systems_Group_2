@@ -35,9 +35,9 @@ spec:
             - name: MINIO_PROMETHEUS_AUTH_TYPE
               value: "public"
             - name: MINIO_BROWSER_REDIRECT_URL
-              value: "http://195.148.22.181/minio-console/"
+              value: "http://195.148.22.181:30080/minio-console/"
             - name: MINIO_DOMAIN
-              value: "195.148.22.181/minio"
+              value: "195.148.22.181:30080/minio"
           ports:
             - containerPort: 9000
               name: minio-port
