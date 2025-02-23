@@ -58,17 +58,6 @@ async def get_all_videos():
             if not videos:
                 return []
             
-            # Extract video IDs
-            video_ids = [video["video_id"] for video in videos]
-            
-            # Get thumbnail URLs
-            # thumbnail_urls = await get_thumbnail_urls(video_ids)
-            
-            # Add thumbnail URLs to video data
-            for video in videos:
-                thumbnail_path = f"thumbnails/{video['video_id']}.jpg"
-                video["thumbnail_url"] = thumbnail_urls.get(thumbnail_path, "")
-            
             return videos
         except httpx.HTTPError as e:
             raise HTTPException(status_code=503, detail="Database service unavailable")
