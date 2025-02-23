@@ -186,7 +186,7 @@ class VideoProcessor:
                     "time_updated": datetime.utcnow().isoformat()
                 }
 
-                client = httpx.AsyncClient()
+                client = httpx.Client()
                 response = client.put(
                     f"{DATABASE_SERVICE_URL}/api/v1/items/{video_id}",
                     json=update_data
