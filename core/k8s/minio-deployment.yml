@@ -80,6 +80,24 @@ spec:
     requests:
       storage: 20Gi
   storageClassName: longhorn
+  selector:
+    matchLabels:
+      type: minio-storage
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: minio-pv
+  labels:
+    type: minio-storage
+spec:
+  capacity:
+    storage: 20Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  hostPath:
+    path: /mnt/data/minio
 ---
 apiVersion: v1
 kind: Secret
