@@ -37,7 +37,7 @@ class Settings(BaseSettings):
     cache_bucket: str = os.getenv("CACHE_BUCKET", "cache")
     core_bucket: str = os.getenv("CORE_BUCKET", "videos")
     
-    min_miss_count: int = int(os.getenv("MIN_MISS_COUNT", "3"))
+    min_miss_count: int = int(os.getenv("MIN_MISS_COUNT", "5"))
     time_window_hours: int = int(os.getenv("TIME_WINDOW_HOURS", "24"))
     
     @validator('redis_port')
