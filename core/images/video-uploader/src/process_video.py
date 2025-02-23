@@ -62,7 +62,7 @@ class VideoProcessor:
             logger.error(f"Error generating thumbnail: {str(e)}")
             return False
         
-    async def _cpu_intensive_processing(self, video_id: str, source_path: str) -> Tuple[bool, str]:
+    def _cpu_intensive_processing(self, video_id: str, source_path: str) -> Tuple[bool, str]:
         """
         Process video in a separate process to create HLS chunks
         Returns: Tuple[success: bool, error_message: str]
@@ -186,8 +186,8 @@ class VideoProcessor:
                     "time_updated": datetime.utcnow().isoformat()
                 }
 
-                async with httpx.AsyncClient() as client:
-                    response = await client.put(
+                with httpx.AsyncClient() as client:
+                    response = client.put(
                         f"{DATABASE_SERVICE_URL}/api/v1/items/{video_id}",
                         json=update_data
                     )
