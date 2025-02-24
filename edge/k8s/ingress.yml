@@ -39,3 +39,10 @@ spec:
                 name: cache-controller
                 port:
                   number: 5032
+          - path: /prometheus(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: prometheus
+                port:
+                  number: 9091
