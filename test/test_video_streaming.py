@@ -139,8 +139,8 @@ def locust_env():
     # Stop the test
     env.runner.quit()
     
-# def test_video_streaming_20_users(locust_env):
-#     _test_video_streaming_users(locust_env, users=20, duration=60, spawn_rate=2)
+def test_video_streaming_20_users(locust_env):
+    _test_video_streaming_users(locust_env, users=20, duration=60, spawn_rate=2)
     
 def test_video_streaming_until_failure(locust_env):
     """Test increasing concurrent users until failure rate exceeds 2%"""
