@@ -209,7 +209,7 @@ data:
               },
               "disableTextWrap": false,
               "editorMode": "builder",
-              "expr": "rate(http_requests_total{handler!=\"/metrics\"}[$__rate_interval])",
+              "expr": "sum(rate(http_requests_total{handler!=\"/metrics\"}[$__rate_interval]))",
               "fullMetaSearch": false,
               "includeNullMetadata": false,
               "legendFormat": "__auto",
