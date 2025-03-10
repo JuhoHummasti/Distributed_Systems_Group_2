@@ -115,9 +115,11 @@ async def analyze_miss_pattern(redis_client: redis.Redis, video_id: str, file_na
 async def should_cache_file(redis_client: redis.Redis, video_id: str, file_name: str) -> bool:
     object_path = f"hls/{video_id}/{file_name}"
     
-    if (object_path in cache_stats['cached_files'] or 
-        object_path in cache_stats['pending_caches']):
+    try:
+        minio_cache_client.stat_object(settings.cache_bucket, object_path)
         return False
+    except Exception as e:
+        pass
     
     miss_count, timestamps = await analyze_miss_pattern(redis_client, video_id, file_name)
     
