@@ -6,9 +6,10 @@ import gevent
 import random
 import logging
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 import time
 import requests
+import redis
 import json
 
 # Configure logging
@@ -41,26 +42,36 @@ def fetch_video_ids():
         
         if not video_ids:
             logger.warning("No valid video IDs found, using fallback IDs")
-            return [
-                "48c7bb7c-75b2-4d4a-8178-f9a41069c6c7",
-                "31c57765-5628-4777-ae15-060e935e56d8",
-                "1a9b2095-f98c-451d-b68b-a7a42fef43f7"
-            ]
+            return []
         
         logger.info(f"Fetched {len(video_ids)} video IDs")
         return video_ids
     except Exception as e:
         logger.error(f"Error fetching video IDs: {str(e)}")
         # Fallback to original IDs if fetching fails
-        return [
-            "48c7bb7c-75b2-4d4a-8178-f9a41069c6c7",
-            "31c57765-5628-4777-ae15-060e935e56d8",
-            "1a9b2095-f98c-451d-b68b-a7a42fef43f7"
-        ]
+        return []
 
 # Get the video IDs at startup
 VIDEO_IDS = fetch_video_ids()
 logger.info(f"Using video IDs: {VIDEO_IDS}")
+
+
+# Redis connection settings
+REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
+REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
+REDIS_DB = int(os.getenv("REDIS_DB", "0"))
+
+# Initialize Redis client
+redis_client = redis.Redis(
+    host=REDIS_HOST,
+    port=REDIS_PORT,
+    db=REDIS_DB,
+    decode_responses=True
+)
+
+# Record test start time for filtering Redis data
+TEST_START_TIME = datetime.now(timezone.utc).isoformat()
+logger.info(f"Test start timestamp: {TEST_START_TIME}")
 
 class VideoStreamingUser(HttpUser):
     host = "http://localhost"
@@ -89,6 +100,117 @@ class VideoStreamingUser(HttpUser):
             self.client.get(segment_url, timeout=2)  # Short timeout to trigger failures faster
             gevent.sleep(0.2)  # Very minimal delay between requests
 
+
+def analyze_redis_cache_metrics():
+    """Analyze Redis data to get cache hit/miss metrics, filtering by test start time"""
+    try:
+        # Get all keys from Redis
+        all_keys = redis_client.keys("*")
+        
+        # Separate hit and miss keys
+        hit_keys = [key for key in all_keys if key.startswith("hit:")]
+        miss_keys = [key for key in all_keys if key.startswith("missed:")]
+        
+        # Collect hit data with proper timestamp filtering
+        hit_counts = {}
+        for key in hit_keys:
+            try:
+                data = json.loads(redis_client.get(key))
+                
+                # Filter timestamps to only include those after test start
+                # Only include timestamps that are ISO format for reliable comparison
+                post_start_timestamps = [
+                    ts for ts in data.get("timestamps", []) 
+                    if isinstance(ts, str) and ts >= TEST_START_TIME
+                ]
+
+                # Only process if there are timestamps after test start
+                if post_start_timestamps:
+                    file_path = key[4:]  # Remove 'hit:' prefix
+                    hit_counts[file_path] = len(post_start_timestamps)
+            except Exception as e:
+                logger.error(f"Error processing hit key {key}: {e}")
+        
+        # Collect miss data with proper timestamp filtering
+        miss_counts = {}
+        for key in miss_keys:
+            try:
+                data = json.loads(redis_client.get(key))
+                
+                # Filter timestamps to only include those after test start
+                # Only include timestamps that are ISO format for reliable comparison
+                post_start_timestamps = [
+                    ts for ts in data.get("timestamps", []) 
+                    if isinstance(ts, str) and ts >= TEST_START_TIME
+                ]
+                
+                # Only process if there are timestamps after test start
+                if post_start_timestamps:
+                    file_path = key[7:]  # Remove 'missed:' prefix
+                    miss_counts[file_path] = len(post_start_timestamps)
+            except Exception as e:
+                logger.error(f"Error processing miss key {key}: {e}")
+        
+        # Calculate aggregate statistics
+        total_hits = sum(hit_counts.values())
+        total_misses = sum(miss_counts.values())
+        total_requests = total_hits + total_misses
+        hit_ratio = total_hits / total_requests if total_requests > 0 else 0
+        
+        # Create file-specific stats
+        file_stats = {}
+        
+        # Combine hits and misses for each file
+        all_files = set(list(hit_counts.keys()) + list(miss_counts.keys()))
+        
+        for file_path in all_files:
+            hits = hit_counts.get(file_path, 0)
+            misses = miss_counts.get(file_path, 0)
+            total = hits + misses
+            ratio = hits / total if total > 0 else 0
+            
+            # Parse video_id and file_name from the path
+            # Path format is typically "{video_id}/{file_name}"
+            if "/" in file_path:
+                video_id, file_name = file_path.split("/", 1)
+            else:
+                video_id = "unknown"
+                file_name = file_path
+                
+            file_stats[file_path] = {
+                "video_id": video_id,
+                "file_name": file_name,
+                "hits": hits,
+                "misses": misses,
+                "total": total,
+                "hit_ratio": ratio
+            }
+        
+        return {
+            "total_hits": total_hits,
+            "total_misses": total_misses,
+            "total_requests": total_requests,
+            "hit_ratio": hit_ratio,
+            "file_stats": file_stats,
+            "unique_files_accessed": len(all_files),
+            "hit_keys_count": len(hit_keys),
+            "miss_keys_count": len(miss_keys)
+        }
+        
+    except Exception as e:
+        logger.error(f"Error analyzing Redis cache metrics: {e}")
+        return {
+            "error": str(e),
+            "total_hits": 0,
+            "total_misses": 0,
+            "total_requests": 0,
+            "hit_ratio": 0,
+            "file_stats": {},
+            "unique_files_accessed": 0,
+            "hit_keys_count": 0,
+            "miss_keys_count": 0
+        }
+
 @pytest.fixture(scope="module")
 def locust_env():
     # Setup similar to original
@@ -109,11 +231,10 @@ def locust_env():
 def test_aggressive_saturation_point(locust_env):
     """Test that quickly identifies the saturation point with exponential user growth"""
     users = 10  # Start with fewer users
-    max_users = 500
+    max_users = 5000
     duration = 60  # Shorter test duration
     spawn_rate = 20  # Faster user spawn rate
-    total_failures = 0
-    total_requests = 0
+    previous_rps = 0
     
     # Don't reset the runner between iterations to maintain pressure
     locust_env.create_local_runner()
@@ -166,12 +287,33 @@ def test_aggressive_saturation_point(locust_env):
         # Double the users for exponential growth
         users = users * 2
     
+    # Final Redis metrics
+    try:
+        final_redis_metrics = analyze_redis_cache_metrics()
+    except Exception as e:
+        logger.error(f"Error getting final metrics: {e}")
+        final_redis_metrics = {
+            "total_hits": 0, 
+            "total_misses": 0, 
+            "total_requests": 0, 
+            "hit_ratio": 0,
+            "unique_files_accessed": 0
+        }
+
     # Final stats
     logger.info("=== TEST COMPLETE ===")
     logger.info(f"Maximum sustainable users: {users // 2}")  # Last stable point
     logger.info(f"Total requests: {locust_env.stats.total.num_requests}")
     logger.info(f"Total failures: {locust_env.stats.total.num_failures}")
     logger.info(f"Connection errors: {locust_env.connection_errors}")
+
+
+    logger.info("\n=== FINAL REDIS CACHE METRICS ===")
+    logger.info(f"Total Hits: {final_redis_metrics['total_hits']}")
+    logger.info(f"Total Misses: {final_redis_metrics['total_misses']}")
+    logger.info(f"Total Cache Requests: {final_redis_metrics['total_requests']}")
+    logger.info(f"Cache Hit Ratio: {final_redis_metrics['hit_ratio']:.2%}")
+    
 
 @pytest.mark.skip(reason="Skipping aggressive saturation test")
 def test_enhanced_saturation_point(locust_env):
