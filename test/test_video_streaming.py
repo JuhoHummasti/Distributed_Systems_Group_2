@@ -8,13 +8,8 @@ import logging
 import os
 from datetime import datetime
 import time
-
-
-VIDEO_IDS = [
-    "48c7bb7c-75b2-4d4a-8178-f9a41069c6c7",
-    "31c57765-5628-4777-ae15-060e935e56d8",
-    "1a9b2095-f98c-451d-b68b-a7a42fef43f7"
-]
+import requests
+import json
 
 # Configure logging
 log_filename = datetime.now().strftime('%Y-%m-%d-%H-%M-%S') + '_TestLocustVideoStreaming.log'
@@ -31,6 +26,41 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 logger.info("Starting the tests")
+
+# Fetch video IDs from the API
+def fetch_video_ids():
+    try:
+        url = "http://195.148.22.181:30080/api/videos"
+        response = requests.get(url)
+        if not response.ok:
+            logger.error(f"Failed to fetch videos: {response.status_code}")
+            return []
+        
+        videos = response.json()
+        video_ids = [video["video_id"] for video in videos if video.get("status") != "processing"]
+        
+        if not video_ids:
+            logger.warning("No valid video IDs found, using fallback IDs")
+            return [
+                "48c7bb7c-75b2-4d4a-8178-f9a41069c6c7",
+                "31c57765-5628-4777-ae15-060e935e56d8",
+                "1a9b2095-f98c-451d-b68b-a7a42fef43f7"
+            ]
+        
+        logger.info(f"Fetched {len(video_ids)} video IDs")
+        return video_ids
+    except Exception as e:
+        logger.error(f"Error fetching video IDs: {str(e)}")
+        # Fallback to original IDs if fetching fails
+        return [
+            "48c7bb7c-75b2-4d4a-8178-f9a41069c6c7",
+            "31c57765-5628-4777-ae15-060e935e56d8",
+            "1a9b2095-f98c-451d-b68b-a7a42fef43f7"
+        ]
+
+# Get the video IDs at startup
+VIDEO_IDS = fetch_video_ids()
+logger.info(f"Using video IDs: {VIDEO_IDS}")
 
 class VideoStreamingUser(HttpUser):
     host = "http://localhost"
